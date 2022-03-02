@@ -7,7 +7,7 @@
 conda create -n yolo3d python=3.8 numpy
 ```
 2. Install pyTorch and torchvision
-Download `.whl` from Nelson Liu for unsupported GPU (old GPU). Install with pip:
+Download `.whl` from [Nelson Liu](https://cs.stanford.edu/~nfliu/files/pytorch/whl/torch_stable.html) for unsupported GPU (old GPU). Install with pip:
 ```
 pip install ./torch-1.8.1+cu101-cp38-cp38-linux_x86_64.whl
 pip install ./torchvision-0.9.1+cu101-cp38-cp38-linux_x86_64.whl
