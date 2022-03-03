@@ -262,3 +262,6 @@ fabric.properties
 /weights
 /sandbox
 /dataset
+
+## My Exclude
+notebook.ipynb

@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-
 def OrientationLoss(orient_batch, orientGT_batch, confGT_batch):
 
     batch_size = orient_batch.size()[0]
@@ -19,9 +18,9 @@ def OrientationLoss(orient_batch, orientGT_batch, confGT_batch):
 
     return -1 * torch.cos(theta_diff - estimated_theta_diff).mean()
 
-class Model(nn.Module):
+class VGG(nn.Module):
     def __init__(self, features=None, bins=2, w = 0.4):
-        super(Model, self).__init__()
+        super(VGG, self).__init__()
         self.bins = bins
         self.w = w
         self.features = features
@@ -65,9 +64,9 @@ class Model(nn.Module):
         dimension = self.dimension(x)
         return orientation, confidence, dimension
 
-class Model_Resnet(nn.Module):
+class ResNet(nn.Module):
     def __init__(self, model=None, bins=2, w = 0.4):
-        super(Model_Resnet, self).__init__()
+        super(ResNet, self).__init__()
         self.bins = bins
         self.w = w
         self.model = model
@@ -111,16 +110,9 @@ class Model_Resnet(nn.Module):
         dimension = self.dimension(x)
         return orientation, confidence, dimension
 
-import torch
-import numpy as np
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.autograd import Variable
-
-
-class Model_Efficientnet(nn.Module):
+class EfficientNet(nn.Module):
     def __init__(self, features=None, bins = 2, w = 0.4):
-        super(Model_Efficientnet, self).__init__()
+        super(EfficientNet, self).__init__()
         self.bins = bins
         self.w = w
         self.features = features

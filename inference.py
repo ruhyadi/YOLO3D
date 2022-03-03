@@ -28,6 +28,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+import glob
 
 import cv2
 import torch
@@ -46,52 +47,58 @@ from utils.general import (LOGGER, check_file, check_img_size, check_imshow, che
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync
 
-class Detection:
+import torch
+import torch.nn as nn
+from torch.autograd import Variable
+from torchvision.models import resnet18
+
+from torch_lib.Dataset import generate_bins, DetectedObject
+from library.Math import *
+from library.Plotting import *
+from torch_lib import Model, ClassAverages
+
+class Bbox:
     def __init__(self, box_2d, class_):
         self.box_2d = box_2d
         self.detected_class = class_
 
 @torch.no_grad()
-def run(
+def detect2d(
     weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
-        source=ROOT / 'data/images',  # file/dir/URL/glob, 0 for webcam
-        data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
-        imgsz=(640, 640),  # inference size (height, width)
-        conf_thres=0.25,  # confidence threshold
-        iou_thres=0.45,  # NMS IOU threshold
-        max_det=1000,  # maximum detections per image
-        device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-        view_img=False,  # show results
-        save_txt=False,  # save results to *.txt
-        save_conf=False,  # save confidences in --save-txt labels
-        save_crop=False,  # save cropped prediction boxes
-        nosave=True,  # do not save images/videos
-        classes=None,  # filter by class: --class 0, or --class 0 2 3
-        agnostic_nms=False,  # class-agnostic NMS
-        augment=False,  # augmented inference
-        visualize=False,  # visualize features
-        update=False,  # update all models
-        project=ROOT / 'runs/detect',  # save results to project/name
-        name='exp',  # save results to project/name
-        exist_ok=False,  # existing project/name ok, do not increment
-        line_thickness=3,  # bounding box thickness (pixels)
-        hide_labels=False,  # hide labels
-        hide_conf=False,  # hide confidences
-        half=False,  # use FP16 half-precision inference
-        dnn=False,  # use OpenCV DNN for ONNX inference
-        bbox3d=True,  # use OpenCV DNN for ONNX inference
-        ):
+    source=ROOT / 'data/images',  # file/dir/URL/glob, 0 for webcam
+    data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
+    imgsz=(640, 640),  # inference size (height, width)
+    conf_thres=0.25,  # confidence threshold
+    iou_thres=0.45,  # NMS IOU threshold
+    max_det=1000,  # maximum detections per image
+    device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
+    view_img=False,  # show results
+    save_txt=False,  # save results to *.txt
+    save_conf=False,  # save confidences in --save-txt labels
+    save_crop=False,  # save cropped prediction boxes
+    nosave=True,  # do not save images/videos
+    classes=None,  # filter by class: --class 0, or --class 0 2 3
+    agnostic_nms=False,  # class-agnostic NMS
+    augment=False,  # augmented inference
+    visualize=False,  # visualize features
+    update=False,  # update all models
+    project=ROOT / 'runs/detect',  # save results to project/name
+    name='exp',  # save results to project/name
+    exist_ok=False,  # existing project/name ok, do not increment
+    line_thickness=3,  # bounding box thickness (pixels)
+    hide_labels=False,  # hide labels
+    hide_conf=False,  # hide confidences
+    half=False,  # use FP16 half-precision inference
+    dnn=False,  # use OpenCV DNN for ONNX inference
+    bbox3d=True,  # use OpenCV DNN for ONNX inference
+    ):
 
     # array for boundingbox detection
-    BBOX3D = []
+    Bbox_list = []
 
+    # Directories
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
-    is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
-    is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
-    webcam = source.isnumeric() or source.endswith('.txt') or (is_url and not is_file)
-    if is_url and is_file:
-        source = check_file(source)  # download
 
     # Directories
     save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
@@ -103,21 +110,9 @@ def run(
     stride, names, pt, jit, onnx, engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
     imgsz = check_img_size(imgsz, s=stride)  # check image size
 
-    # Half
-    half &= (pt or jit or engine) and device.type != 'cpu'  # half precision only supported by PyTorch on CUDA
-    if pt or jit:
-        model.model.half() if half else model.model.float()
-
     # Dataloader
-    if webcam:
-        view_img = check_imshow()
-        cudnn.benchmark = True  # set True to speed up constant image size inference
-        dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt)
-        bs = len(dataset)  # batch_size
-    else:
-        dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
-        bs = 1  # batch_size
-    vid_path, vid_writer = [None] * bs, [None] * bs
+    dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
+    bs = 1  # batch_size
 
     # Run inference
     model.warmup(imgsz=(1, 3, *imgsz), half=half)  # warmup
@@ -148,79 +143,33 @@ def run(
         # Process predictions
         for i, det in enumerate(pred):  # per image
             seen += 1
-            if webcam:  # batch_size >= 1
-                p, im0, frame = path[i], im0s[i].copy(), dataset.count
-                s += f'{i}: '
-            else:
-                p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
+            p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
 
             p = Path(p)  # to Path
-            save_path = str(save_dir / p.name)  # im.jpg
-            txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
             s += '%gx%g ' % im.shape[2:]  # print string
-            gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
-            imc = im0.copy() if save_crop else im0  # for save_crop
-            annotator = Annotator(im0, line_width=line_thickness, example=str(names))
+
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
 
                 # Print results
-                for c in det[:, -1].unique(): # c : class
+                for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
-                    if save_txt:  # Write to file
-                        xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                        line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
-                        with open(txt_path + '.txt', 'a') as f:
-                            f.write(('%g ' * len(line)).rstrip() % line + '\n')
+                    xyxy_ = (torch.tensor(xyxy).view(1,4)).view(-1).tolist()
+                    xyxy_ = [int(x) for x in xyxy_]
+                    top_left, bottom_right = (xyxy_[0], xyxy_[1]), (xyxy_[2], xyxy_[3])
+                    bbox = [top_left, bottom_right]
+                    c = int(cls)  # integer class
+                    label = names[c]
 
-                    if save_img or save_crop or view_img:  # Add bbox to image
-                        c = int(cls)  # integer class
-                        label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
-                        annotator.box_label(xyxy, label, color=colors(c, True))
-                        if save_crop:
-                            save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
-
-                    if bbox3d:
-                        xyxy_ = (torch.tensor(xyxy, dtype=torch.int).view(1,4)).view(-1).tolist()
-                        top_left, bottom_right = (xyxy_[0], xyxy_[1]), (xyxy_[2], xyxy_[3])
-                        bbox = [top_left, bottom_right]
-                        c = int(cls)  # integer class
-                        label = names[c]
-
-                        BBOX3D.append(Detection(bbox, label))
+                    Bbox_list.append(Bbox(bbox, label))
 
             # Print time (inference-only)
             LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
-
-            # Stream results
-            im0 = annotator.result()
-            if view_img:
-                cv2.imshow(str(p), im0)
-                cv2.waitKey(1)  # 1 millisecond
-
-            # Save results (image with detections)
-            if save_img:
-                if dataset.mode == 'image':
-                    cv2.imwrite(save_path, im0)
-                else:  # 'video' or 'stream'
-                    if vid_path[i] != save_path:  # new video
-                        vid_path[i] = save_path
-                        if isinstance(vid_writer[i], cv2.VideoWriter):
-                            vid_writer[i].release()  # release previous video writer
-                        if vid_cap:  # video
-                            fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                            w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                            h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                        else:  # stream
-                            fps, w, h = 30, im0.shape[1], im0.shape[0]
-                            save_path += '.mp4'
-                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-                    vid_writer[i].write(im0)
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
@@ -231,7 +180,95 @@ def run(
     if update:
         strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
 
-    return BBOX3D
+    return Bbox_list
+
+def plot3d(img, cam_to_img, box_2d, dimensions, alpha, theta_ray, img_2d=None):
+
+    # the math! returns X, the corners used for constraint
+    location, X = calc_location(dimensions, cam_to_img, box_2d, alpha, theta_ray)
+
+    orient = alpha + theta_ray
+
+    if img_2d is not None:
+        plot_2d_box(img_2d, box_2d)
+
+    plot_3d_box(img, cam_to_img, orient, dimensions, location) # 3d boxes
+
+    return location
+
+def detect3d(
+    reg_weights=ROOT / 'weights/resnet_10.pkl',
+    model_list='resnet',
+    source='/eval/image_2', # image source
+    calib=ROOT / 'eval/camera_cal/calib_cam_to_cam.txt',
+    show_result=True
+    ):
+
+    calib = str(calib)
+
+    # Directory
+    imgs_path = glob.glob(str(source) + '/*')
+
+    # load model
+    if model_list == 'resnet':
+        resnet = resnet18(pretrained=True)
+        resnet.fc = nn.Linear(512, 512)
+        regressor = Model.ResNet(model=resnet, bins=2).cuda()
+
+        # load weight
+        checkpoint = torch.load(reg_weights)
+        regressor.load_state_dict(checkpoint['model_state_dict'])
+        regressor.eval()
+
+    # TODO: maybe cleanup this 
+    averages = ClassAverages.ClassAverages()
+    angle_bins = generate_bins(2)
+
+    # loop images
+    for img_path in imgs_path:
+        # read image
+        img = cv2.imread(img_path)
+        # Run detection 3d
+        dets = detect2d(source=img_path)
+
+        for det in dets:
+            if not averages.recognized_class(det.detected_class):
+                continue
+            try: 
+                detectedObject = DetectedObject(img, det.detected_class, det.box_2d, calib)
+            except:
+                continue
+
+            theta_ray = detectedObject.theta_ray
+            input_img = detectedObject.img
+            proj_matrix = detectedObject.proj_matrix
+            box_2d = det.box_2d
+            detected_class = det.detected_class
+
+            input_tensor = torch.zeros([1,3,224,224]).cuda()
+            input_tensor[0,:,:,:] = input_img
+
+            # predict orient, conf, and dim
+            [orient, conf, dim] = regressor(input_tensor)
+            orient = orient.cpu().data.numpy()[0, :, :]
+            conf = conf.cpu().data.numpy()[0, :]
+            dim = dim.cpu().data.numpy()[0, :]
+
+            dim += averages.get_item(detected_class)
+
+            argmax = np.argmax(conf)
+            orient = orient[argmax, :]
+            cos = orient[0]
+            sin = orient[1]
+            alpha = np.arctan2(sin, cos)
+            alpha += angle_bins[argmax]
+            alpha -= np.pi
+
+            # plot 3d detection
+            plot3d(img, proj_matrix, box_2d, dim, alpha, theta_ray)
+
+        cv2.imshow('3d detection', img)
+        cv2.waitKey(0)
 
 def parse_opt():
     parser = argparse.ArgumentParser()
@@ -261,7 +298,14 @@ def parse_opt():
     parser.add_argument('--hide-conf', default=False, action='store_true', help='hide confidences')
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
-    parser.add_argument('--bbox3d', default=True, action='store_true', help='store bbox to bbox3d')
+    parser.add_argument('--bbox3d', default=False, action='store_true', help='store bbox to bbox3d')
+    
+    # detect3d args
+    parser.add_argument('--reg_weights', type=str, default='weights/resnet_10.pkl', help='Regressor model weights')
+    parser.add_argument('--model_list', type=str, default='resnet', help='Regressor model list: resnet, vgg, eff')
+    parser.add_argument('--calib', type=str, default=ROOT / 'eval/camera_cal/calib_cam_to_cam.txt', help='Calibration file or path')
+    parser.add_argument('--show_result', action='store_true', default=True, help='Show Results with imshow')
+
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(FILE.stem, opt)
@@ -269,9 +313,8 @@ def parse_opt():
 
 def main(opt):
     check_requirements(exclude=('tensorboard', 'thop'))
-    detections = run(**vars(opt))
-    for detection in detections:
-        print(detection.box_2d, detection.detected_class)
+    # TODO: change args input
+    detect3d(opt.reg_weights, opt.model_list, opt.source, opt.calib, opt.show_result)
 
 if __name__ == "__main__":
     opt = parse_opt()
