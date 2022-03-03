@@ -137,9 +137,9 @@ def run(data,
 
         # Load model
         model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data)
-        stride, pt, jit, onnx, engine = model.stride, model.pt, model.jit, model.onnx, model.engine
+        stride, pt, jit, engine = model.stride, model.pt, model.jit, model.engine
         imgsz = check_img_size(imgsz, s=stride)  # check image size
-        half &= (pt or jit or onnx or engine) and device.type != 'cpu'  # FP16 supported on limited backends with CUDA
+        half &= (pt or jit or engine) and device.type != 'cpu'  # half precision only supported by PyTorch on CUDA
         if pt or jit:
             model.model.half() if half else model.model.float()
         elif engine:
@@ -162,11 +162,10 @@ def run(data,
 
     # Dataloader
     if not training:
-        model.warmup(imgsz=(1 if pt else batch_size, 3, imgsz, imgsz), half=half)  # warmup
-        pad = 0.0 if task in ('speed', 'benchmark') else 0.5
-        rect = False if task == 'benchmark' else pt  # square inference for benchmarks
+        model.warmup(imgsz=(1, 3, imgsz, imgsz), half=half)  # warmup
+        pad = 0.0 if task == 'speed' else 0.5
         task = task if task in ('train', 'val', 'test') else 'val'  # path to train/val/test images
-        dataloader = create_dataloader(data[task], imgsz, batch_size, stride, single_cls, pad=pad, rect=rect,
+        dataloader = create_dataloader(data[task], imgsz, batch_size, stride, single_cls, pad=pad, rect=pt,
                                        workers=workers, prefix=colorstr(f'{task}: '))[0]
 
     seen = 0

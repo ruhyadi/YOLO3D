@@ -159,7 +159,10 @@ class Loggers():
                 wandb.log_artifact(str(best if best.exists() else last), type='model',
                                    name='run_' + self.wandb.wandb_run.id + '_model',
                                    aliases=['latest', 'best', 'stripped'])
-            self.wandb.finish_run()
+                self.wandb.finish_run()
+            else:
+                self.wandb.finish_run()
+                self.wandb = WandbLogger(self.opt)
 
     def on_params_update(self, params):
         # Update hyperparams or configs of the experiment

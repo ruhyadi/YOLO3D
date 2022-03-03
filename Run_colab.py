@@ -5,13 +5,10 @@ Uses YOLO to obtain 2D box, PyTorch to get 3D box, plots both
 
 SPACE bar for next image, any other key to exit
 """
-
-from detect import run
-
 from torch_lib.Dataset import *
+from torch_lib import Model, ClassAverages
 from library.Math import *
 from library.Plotting import *
-from torch_lib import Model, ClassAverages
 from yolo.yolo import cv_Yolo
 
 import os
@@ -24,6 +21,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torchvision.models import vgg
+# TODO: Change to resnet18 model
 
 import argparse
 
@@ -34,7 +32,6 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
-
 
 parser = argparse.ArgumentParser()
 
@@ -84,8 +81,8 @@ def main():
         exit()
     else:
         print('Using previous model %s'%model_lst[-1])
+        # TODO: Change to resnet
         my_vgg = vgg.vgg19_bn(pretrained=True)
-        # TODO: load bins from file or something
         model = Model.Model(features=my_vgg.features, bins=2).cuda()
         checkpoint = torch.load(weights_path + '/%s'%model_lst[-1])
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -135,10 +132,7 @@ def main():
         img = np.copy(truth_img)
         yolo_img = np.copy(truth_img)
 
-        # TODO: change to YOLOv5
-        detections = run(source=img_file)
-        #detections = yolo.detect(yolo_img)
-        #add yolo v5
+        detections = yolo.detect(yolo_img)
 
         for detection in detections:
 

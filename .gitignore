@@ -260,3 +260,5 @@ fabric.properties
 /3DBBox
 /eval
 /weights
+/sandbox
+/dataset

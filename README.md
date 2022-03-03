@@ -1,31 +1,21 @@
-# YOLO3D
-3D Object Detection with YOLOv5 for Autonomous Driving Vehicle
+# YOLO For 3D Object Detection
 
-## Installation
-1. Create Conda Env
+
+## Training 
 ```
-conda create -n yolo3d python=3.8 numpy
-```
-2. Install pyTorch and torchvision
-Download `.whl` from [Nelson Liu](https://cs.stanford.edu/~nfliu/files/pytorch/whl/torch_stable.html) for unsupported GPU (old GPU). Install with pip:
-```
-pip install ./torch-1.8.1+cu101-cp38-cp38-linux_x86_64.whl
-pip install ./torchvision-0.9.1+cu101-cp38-cp38-linux_x86_64.whl
-```
-3. Install Requirements
-```
-pip install -r requirements.txt
+python train_vgg.py \
+    --dataset_path /home/didi/Repository/RTYOLO3D/dataset/KITTI/training/ \
+    --weights /home/didi/Repository/RTYOLO3D/weights \
+    --epochs 100 \
+    --batch_size 50 \
+    --num_workers 4 \
 ```
 
-## Inference
-### Inference with `detect.py`
 ```
-python detect.py \
-    --weights yolov5s.pt \
-    --source data/images \
-    --classes 0 1 2 \
-    --project runs/detect/
+python train_vgg.py \
+    --dataset_path /home/didi/Repository/RTYOLO3D/dataset/KITTI/training/ \
+    --weights /home/didi/Repository/RTYOLO3D/weights \
+    --epochs 1 \
+    --batch_size 1 \
+    --num_workers 4 \
 ```
-
-## Reference
-- [YOLOv5 by ultralytics](https://github.com/ultralytics/yolov5)

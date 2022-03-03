@@ -8,6 +8,7 @@ from torchvision import transforms
 from torch.utils import data
 
 from library.File import *
+from library.File import get_P
 
 from .ClassAverages import ClassAverages
 
@@ -52,6 +53,7 @@ class Dataset(data.Dataset):
                                 (i*self.interval + self.interval + overlap) % (2*np.pi)) )
 
         # hold average dimensions
+        # for counting num classes in dataset
         class_list = ['Car', 'Van', 'Truck', 'Pedestrian','Person_sitting', 'Cyclist', 'Tram', 'Misc']
         self.averages = ClassAverages(class_list)
 

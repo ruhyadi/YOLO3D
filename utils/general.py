@@ -35,71 +35,25 @@ from utils.metrics import box_iou, fitness
 # Settings
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # YOLOv5 root directory
-DATASETS_DIR = ROOT.parent / 'datasets'  # YOLOv5 datasets directory
 NUM_THREADS = min(8, max(1, os.cpu_count() - 1))  # number of YOLOv5 multiprocessing threads
-VERBOSE = str(os.getenv('YOLOv5_VERBOSE', True)).lower() == 'true'  # global verbose mode
-FONT = 'Arial.ttf'  # https://ultralytics.com/assets/Arial.ttf
 
 torch.set_printoptions(linewidth=320, precision=5, profile='long')
 np.set_printoptions(linewidth=320, formatter={'float_kind': '{:11.5g}'.format})  # format short g, %precision=5
 pd.options.display.max_columns = 10
 cv2.setNumThreads(0)  # prevent OpenCV from multithreading (incompatible with PyTorch DataLoader)
 os.environ['NUMEXPR_MAX_THREADS'] = str(NUM_THREADS)  # NumExpr max threads
-os.environ['OMP_NUM_THREADS'] = str(NUM_THREADS)  # OpenMP max threads (PyTorch and SciPy)
 
 
-def is_kaggle():
-    # Is environment a Kaggle Notebook?
-    try:
-        assert os.environ.get('PWD') == '/kaggle/working'
-        assert os.environ.get('KAGGLE_URL_BASE') == 'https://www.kaggle.com'
-        return True
-    except AssertionError:
-        return False
-
-
-def is_writeable(dir, test=False):
-    # Return True if directory has write permissions, test opening a file with write permissions if test=True
-    if test:  # method 1
-        file = Path(dir) / 'tmp.txt'
-        try:
-            with open(file, 'w'):  # open file with write permissions
-                pass
-            file.unlink()  # remove file
-            return True
-        except OSError:
-            return False
-    else:  # method 2
-        return os.access(dir, os.R_OK)  # possible issues on Windows
-
-
-def set_logging(name=None, verbose=VERBOSE):
+def set_logging(name=None, verbose=True):
     # Sets level and returns logger
-    if is_kaggle():
-        for h in logging.root.handlers:
-            logging.root.removeHandler(h)  # remove all handlers associated with the root logger object
+    for h in logging.root.handlers:
+        logging.root.removeHandler(h)  # remove all handlers associated with the root logger object
     rank = int(os.getenv('RANK', -1))  # rank in world for Multi-GPU trainings
     logging.basicConfig(format="%(message)s", level=logging.INFO if (verbose and rank in (-1, 0)) else logging.WARNING)
     return logging.getLogger(name)
 
 
-LOGGER = set_logging('yolov5')  # define globally (used in train.py, val.py, detect.py, etc.)
-
-
-def user_config_dir(dir='Ultralytics', env_var='YOLOV5_CONFIG_DIR'):
-    # Return path of user configuration directory. Prefer environment variable if exists. Make dir if required.
-    env = os.getenv(env_var)
-    if env:
-        path = Path(env)  # use environment variable
-    else:
-        cfg = {'Windows': 'AppData/Roaming', 'Linux': '.config', 'Darwin': 'Library/Application Support'}  # 3 OS dirs
-        path = Path.home() / cfg.get(platform.system(), '')  # OS-specific config dir
-        path = (path if is_writeable(path) else Path('/tmp')) / dir  # GCP and AWS lambda fix, only /tmp is writeable
-    path.mkdir(exist_ok=True)  # make if required
-    return path
-
-
-CONFIG_DIR = user_config_dir()  # Ultralytics settings dir
+LOGGER = set_logging(__name__)  # define globally (used in train.py, val.py, detect.py, etc.)
 
 
 class Profile(contextlib.ContextDecorator):
@@ -186,6 +140,34 @@ def get_latest_run(search_dir='.'):
     return max(last_list, key=os.path.getctime) if last_list else ''
 
 
+def user_config_dir(dir='Ultralytics', env_var='YOLOV5_CONFIG_DIR'):
+    # Return path of user configuration directory. Prefer environment variable if exists. Make dir if required.
+    env = os.getenv(env_var)
+    if env:
+        path = Path(env)  # use environment variable
+    else:
+        cfg = {'Windows': 'AppData/Roaming', 'Linux': '.config', 'Darwin': 'Library/Application Support'}  # 3 OS dirs
+        path = Path.home() / cfg.get(platform.system(), '')  # OS-specific config dir
+        path = (path if is_writeable(path) else Path('/tmp')) / dir  # GCP and AWS lambda fix, only /tmp is writeable
+    path.mkdir(exist_ok=True)  # make if required
+    return path
+
+
+def is_writeable(dir, test=False):
+    # Return True if directory has write permissions, test opening a file with write permissions if test=True
+    if test:  # method 1
+        file = Path(dir) / 'tmp.txt'
+        try:
+            with open(file, 'w'):  # open file with write permissions
+                pass
+            file.unlink()  # remove file
+            return True
+        except OSError:
+            return False
+    else:  # method 2
+        return os.access(dir, os.R_OK)  # possible issues on Windows
+
+
 def is_docker():
     # Is environment a Docker container?
     return Path('/workspace').exists()  # or Path('/.dockerenv').exists()
@@ -213,7 +195,7 @@ def is_ascii(s=''):
 
 def is_chinese(s='人工智能'):
     # Is string composed of any Chinese characters?
-    return True if re.search('[\u4e00-\u9fff]', str(s)) else False
+    return re.search('[\u4e00-\u9fff]', s)
 
 
 def emojis(str=''):
@@ -247,20 +229,20 @@ def check_online():
 def check_git_status():
     # Recommend 'git pull' if code is out of date
     msg = ', for updates see https://github.com/ultralytics/yolov5'
-    s = colorstr('github: ')  # string
-    assert Path('.git').exists(), s + 'skipping check (not a git repository)' + msg
-    assert not is_docker(), s + 'skipping check (Docker image)' + msg
-    assert check_online(), s + 'skipping check (offline)' + msg
+    print(colorstr('github: '), end='')
+    assert Path('.git').exists(), 'skipping check (not a git repository)' + msg
+    assert not is_docker(), 'skipping check (Docker image)' + msg
+    assert check_online(), 'skipping check (offline)' + msg
 
     cmd = 'git fetch && git config --get remote.origin.url'
     url = check_output(cmd, shell=True, timeout=5).decode().strip().rstrip('.git')  # git fetch
     branch = check_output('git rev-parse --abbrev-ref HEAD', shell=True).decode().strip()  # checked out
     n = int(check_output(f'git rev-list {branch}..origin/master --count', shell=True))  # commits behind
     if n > 0:
-        s += f"⚠️ YOLOv5 is out of date by {n} commit{'s' * (n > 1)}. Use `git pull` or `git clone {url}` to update."
+        s = f"⚠️ YOLOv5 is out of date by {n} commit{'s' * (n > 1)}. Use `git pull` or `git clone {url}` to update."
     else:
-        s += f'up to date with {url} ✅'
-    LOGGER.info(emojis(s))  # emoji-safe
+        s = f'up to date with {url} ✅'
+    print(emojis(s))  # emoji-safe
 
 
 def check_python(minimum='3.6.2'):
@@ -297,24 +279,24 @@ def check_requirements(requirements=ROOT / 'requirements.txt', exclude=(), insta
     for r in requirements:
         try:
             pkg.require(r)
-        except Exception:  # DistributionNotFound or VersionConflict if requirements not met
+        except Exception as e:  # DistributionNotFound or VersionConflict if requirements not met
             s = f"{prefix} {r} not found and is required by YOLOv5"
             if install:
-                LOGGER.info(f"{s}, attempting auto-update...")
+                print(f"{s}, attempting auto-update...")
                 try:
                     assert check_online(), f"'pip install {r}' skipped (offline)"
-                    LOGGER.info(check_output(f"pip install '{r}'", shell=True).decode())
+                    print(check_output(f"pip install '{r}'", shell=True).decode())
                     n += 1
                 except Exception as e:
-                    LOGGER.warning(f'{prefix} {e}')
+                    print(f'{prefix} {e}')
             else:
-                LOGGER.info(f'{s}. Please install and rerun your command.')
+                print(f'{s}. Please install and rerun your command.')
 
     if n:  # if packages updated
         source = file.resolve() if 'file' in locals() else requirements
         s = f"{prefix} {n} package{'s' * (n > 1)} updated per {source}\n" \
             f"{prefix} ⚠️ {colorstr('bold', 'Restart runtime or rerun command for updates to take effect')}\n"
-        LOGGER.info(emojis(s))
+        print(emojis(s))
 
 
 def check_img_size(imgsz, s=32, floor=0):
@@ -324,7 +306,7 @@ def check_img_size(imgsz, s=32, floor=0):
     else:  # list i.e. img_size=[640, 480]
         new_size = [max(make_divisible(x, int(s)), floor) for x in imgsz]
     if new_size != imgsz:
-        LOGGER.warning(f'WARNING: --img-size {imgsz} must be multiple of max stride {s}, updating to {new_size}')
+        print(f'WARNING: --img-size {imgsz} must be multiple of max stride {s}, updating to {new_size}')
     return new_size
 
 
@@ -339,7 +321,7 @@ def check_imshow():
         cv2.waitKey(1)
         return True
     except Exception as e:
-        LOGGER.warning(f'WARNING: Environment does not support cv2.imshow() or PIL Image.show() image displays\n{e}')
+        print(f'WARNING: Environment does not support cv2.imshow() or PIL Image.show() image displays\n{e}')
         return False
 
 
@@ -369,9 +351,9 @@ def check_file(file, suffix=''):
         url = str(Path(file)).replace(':/', '://')  # Pathlib turns :// -> :/
         file = Path(urllib.parse.unquote(file).split('?')[0]).name  # '%2F' to '/', split https://url.com/file.txt?auth
         if Path(file).is_file():
-            LOGGER.info(f'Found {url} locally at {file}')  # file already exists
+            print(f'Found {url} locally at {file}')  # file already exists
         else:
-            LOGGER.info(f'Downloading {url} to {file}...')
+            print(f'Downloading {url} to {file}...')
             torch.hub.download_url_to_file(url, file)
             assert Path(file).exists() and Path(file).stat().st_size > 0, f'File download failed: {url}'  # check
         return file
@@ -384,15 +366,6 @@ def check_file(file, suffix=''):
         return files[0]  # return file
 
 
-def check_font(font=FONT):
-    # Download font to CONFIG_DIR if necessary
-    font = Path(font)
-    if not font.exists() and not (CONFIG_DIR / font.name).exists():
-        url = "https://ultralytics.com/assets/" + font.name
-        LOGGER.info(f'Downloading {url} to {CONFIG_DIR / font.name}...')
-        torch.hub.download_url_to_file(url, str(font), progress=False)
-
-
 def check_dataset(data, autodownload=True):
     # Download and/or unzip dataset if not found locally
     # Usage: https://github.com/ultralytics/yolov5/releases/download/v1.0/coco128_with_yaml.zip
@@ -400,8 +373,8 @@ def check_dataset(data, autodownload=True):
     # Download (optional)
     extract_dir = ''
     if isinstance(data, (str, Path)) and str(data).endswith('.zip'):  # i.e. gs://bucket/dir/coco128.zip
-        download(data, dir=DATASETS_DIR, unzip=True, delete=False, curl=False, threads=1)
-        data = next((DATASETS_DIR / Path(data).stem).rglob('*.yaml'))
+        download(data, dir='../datasets', unzip=True, delete=False, curl=False, threads=1)
+        data = next((Path('../datasets') / Path(data).stem).rglob('*.yaml'))
         extract_dir, autodownload = data.parent, False
 
     # Read yaml (optional)
@@ -409,15 +382,12 @@ def check_dataset(data, autodownload=True):
         with open(data, errors='ignore') as f:
             data = yaml.safe_load(f)  # dictionary
 
-    # Resolve paths
-    path = Path(extract_dir or data.get('path') or '')  # optional 'path' default to '.'
-    if not path.is_absolute():
-        path = (ROOT / path).resolve()
+    # Parse yaml
+    path = extract_dir or Path(data.get('path') or '')  # optional 'path' default to '.'
     for k in 'train', 'val', 'test':
         if data.get(k):  # prepend path
             data[k] = str(path / data[k]) if isinstance(data[k], str) else [str(path / x) for x in data[k]]
 
-    # Parse yaml
     assert 'nc' in data, "Dataset 'nc' key missing."
     if 'names' not in data:
         data['names'] = [f'class{i}' for i in range(data['nc'])]  # assign class names if missing
@@ -425,23 +395,23 @@ def check_dataset(data, autodownload=True):
     if val:
         val = [Path(x).resolve() for x in (val if isinstance(val, list) else [val])]  # val path
         if not all(x.exists() for x in val):
-            LOGGER.info('\nDataset not found, missing paths: %s' % [str(x) for x in val if not x.exists()])
+            print('\nWARNING: Dataset not found, nonexistent paths: %s' % [str(x) for x in val if not x.exists()])
             if s and autodownload:  # download script
                 root = path.parent if 'path' in data else '..'  # unzip directory i.e. '../'
                 if s.startswith('http') and s.endswith('.zip'):  # URL
                     f = Path(s).name  # filename
-                    LOGGER.info(f'Downloading {s} to {f}...')
+                    print(f'Downloading {s} to {f}...')
                     torch.hub.download_url_to_file(s, f)
                     Path(root).mkdir(parents=True, exist_ok=True)  # create root
                     ZipFile(f).extractall(path=root)  # unzip
                     Path(f).unlink()  # remove zip
                     r = None  # success
                 elif s.startswith('bash '):  # bash script
-                    LOGGER.info(f'Running {s} ...')
+                    print(f'Running {s} ...')
                     r = os.system(s)
                 else:  # python script
                     r = exec(s, {'yaml': data})  # return None
-                LOGGER.info(f"Dataset autodownload {f'success, saved to {root}' if r in (0, None) else 'failure'}\n")
+                print(f"Dataset autodownload {f'success, saved to {root}' if r in (0, None) else 'failure'}\n")
             else:
                 raise Exception('Dataset not found.')
 
@@ -463,13 +433,13 @@ def download(url, dir='.', unzip=True, delete=True, curl=False, threads=1):
         if Path(url).is_file():  # exists in current path
             Path(url).rename(f)  # move to dir
         elif not f.exists():
-            LOGGER.info(f'Downloading {url} to {f}...')
+            print(f'Downloading {url} to {f}...')
             if curl:
                 os.system(f"curl -L '{url}' -o '{f}' --retry 9 -C -")  # curl download, retry and resume on fail
             else:
                 torch.hub.download_url_to_file(url, f, progress=True)  # torch download
         if unzip and f.suffix in ('.zip', '.gz'):
-            LOGGER.info(f'Unzipping {f}...')
+            print(f'Unzipping {f}...')
             if f.suffix == '.zip':
                 ZipFile(f).extractall(path=dir)  # unzip
             elif f.suffix == '.gz':
@@ -701,16 +671,16 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
     output = [torch.zeros((0, 6), device=prediction.device)] * prediction.shape[0]
     for xi, x in enumerate(prediction):  # image index, image inference
         # Apply constraints
-        x[((x[..., 2:4] < min_wh) | (x[..., 2:4] > max_wh)).any(1), 4] = 0  # width-height
+        # x[((x[..., 2:4] < min_wh) | (x[..., 2:4] > max_wh)).any(1), 4] = 0  # width-height
         x = x[xc[xi]]  # confidence
 
         # Cat apriori labels if autolabelling
         if labels and len(labels[xi]):
-            lb = labels[xi]
-            v = torch.zeros((len(lb), nc + 5), device=x.device)
-            v[:, :4] = lb[:, 1:5]  # box
+            l = labels[xi]
+            v = torch.zeros((len(l), nc + 5), device=x.device)
+            v[:, :4] = l[:, 1:5]  # box
             v[:, 4] = 1.0  # conf
-            v[range(len(lb)), lb[:, 0].long() + 5] = 1.0  # cls
+            v[range(len(l)), l[:, 0].long() + 5] = 1.0  # cls
             x = torch.cat((x, v), 0)
 
         # If none remain process next image
@@ -762,7 +732,7 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
 
         output[xi] = x[i]
         if (time.time() - t) > time_limit:
-            LOGGER.warning(f'WARNING: NMS time limit {time_limit}s exceeded')
+            print(f'WARNING: NMS time limit {time_limit}s exceeded')
             break  # time limit exceeded
 
     return output
@@ -781,12 +751,11 @@ def strip_optimizer(f='best.pt', s=''):  # from utils.general import *; strip_op
         p.requires_grad = False
     torch.save(x, s or f)
     mb = os.path.getsize(s or f) / 1E6  # filesize
-    LOGGER.info(f"Optimizer stripped from {f},{(' saved as %s,' % s) if s else ''} {mb:.1f}MB")
+    print(f"Optimizer stripped from {f},{(' saved as %s,' % s) if s else ''} {mb:.1f}MB")
 
 
-def print_mutation(results, hyp, save_dir, bucket, prefix=colorstr('evolve: ')):
-    evolve_csv = save_dir / 'evolve.csv'
-    evolve_yaml = save_dir / 'hyp_evolve.yaml'
+def print_mutation(results, hyp, save_dir, bucket):
+    evolve_csv, results_csv, evolve_yaml = save_dir / 'evolve.csv', save_dir / 'results.csv', save_dir / 'hyp_evolve.yaml'
     keys = ('metrics/precision', 'metrics/recall', 'metrics/mAP_0.5', 'metrics/mAP_0.5:0.95',
             'val/box_loss', 'val/obj_loss', 'val/cls_loss') + tuple(hyp.keys())  # [results + hyps]
     keys = tuple(x.strip() for x in keys)
@@ -796,7 +765,7 @@ def print_mutation(results, hyp, save_dir, bucket, prefix=colorstr('evolve: ')):
     # Download (optional)
     if bucket:
         url = f'gs://{bucket}/evolve.csv'
-        if gsutil_getsize(url) > (evolve_csv.stat().st_size if evolve_csv.exists() else 0):
+        if gsutil_getsize(url) > (os.path.getsize(evolve_csv) if os.path.exists(evolve_csv) else 0):
             os.system(f'gsutil cp {url} {save_dir}')  # download evolve.csv if larger than local
 
     # Log to evolve.csv
@@ -804,23 +773,21 @@ def print_mutation(results, hyp, save_dir, bucket, prefix=colorstr('evolve: ')):
     with open(evolve_csv, 'a') as f:
         f.write(s + ('%20.5g,' * n % vals).rstrip(',') + '\n')
 
+    # Print to screen
+    print(colorstr('evolve: ') + ', '.join(f'{x.strip():>20s}' for x in keys))
+    print(colorstr('evolve: ') + ', '.join(f'{x:20.5g}' for x in vals), end='\n\n\n')
+
     # Save yaml
     with open(evolve_yaml, 'w') as f:
         data = pd.read_csv(evolve_csv)
         data = data.rename(columns=lambda x: x.strip())  # strip keys
-        i = np.argmax(fitness(data.values[:, :4]))  #
-        generations = len(data)
+        i = np.argmax(fitness(data.values[:, :7]))  #
         f.write('# YOLOv5 Hyperparameter Evolution Results\n' +
                 f'# Best generation: {i}\n' +
-                f'# Last generation: {generations - 1}\n' +
+                f'# Last generation: {len(data) - 1}\n' +
                 '# ' + ', '.join(f'{x.strip():>20s}' for x in keys[:7]) + '\n' +
                 '# ' + ', '.join(f'{x:>20.5g}' for x in data.values[i, :7]) + '\n\n')
-        yaml.safe_dump(data.loc[i][7:].to_dict(), f, sort_keys=False)
-
-    # Print to screen
-    LOGGER.info(prefix + f'{generations} generations finished, current result:\n' +
-                prefix + ', '.join(f'{x.strip():>20s}' for x in keys) + '\n' +
-                prefix + ', '.join(f'{x:20.5g}' for x in vals) + '\n\n')
+        yaml.safe_dump(hyp, f, sort_keys=False)
 
     if bucket:
         os.system(f'gsutil cp {evolve_csv} {evolve_yaml} gs://{bucket}')  # upload

@@ -68,8 +68,6 @@ class cv_Yolo:
                     confidences.append(float(confidence))
                     class_ids.append(class_id)
 
-
-
         idxs = cv2.dnn.NMSBoxes(boxes, confidences, self.confidence, self.threshold)
 
         if len(idxs) > 0:
@@ -89,8 +87,6 @@ class cv_Yolo:
 
     def get_class(self, class_id):
         return self.labels[class_id]
-
-
 
 class Detection:
     def __init__(self, box_2d, class_):
