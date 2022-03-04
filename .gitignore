@@ -259,9 +259,10 @@ fabric.properties
 ## Folder
 /3DBBox
 /eval
-/weights
 /sandbox
 /dataset
+/old_code
 
 ## My Exclude
 notebook.ipynb
+*.pkl

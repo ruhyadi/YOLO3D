@@ -201,7 +201,9 @@ def detect3d(
     model_list='resnet',
     source='/eval/image_2', # image source
     calib=ROOT / 'eval/camera_cal/calib_cam_to_cam.txt',
-    show_result=True
+    show_result=True,
+    save_result=False,
+    output_path=ROOT / 'runs/detect'
     ):
 
     calib = str(calib)
@@ -225,7 +227,7 @@ def detect3d(
     angle_bins = generate_bins(2)
 
     # loop images
-    for img_path in imgs_path:
+    for i, img_path in enumerate(imgs_path):
         # read image
         img = cv2.imread(img_path)
         # Run detection 3d
@@ -267,8 +269,14 @@ def detect3d(
             # plot 3d detection
             plot3d(img, proj_matrix, box_2d, dim, alpha, theta_ray)
 
-        cv2.imshow('3d detection', img)
-        cv2.waitKey(0)
+        if show_result:
+            cv2.imshow('3d detection', img)
+            cv2.waitKey(0)
+
+        if save_result and output_path is not None:
+            print(output_path)
+            cv2.imwrite(f'{output_path}/{i:03d}.png', img)
+
 
 def parse_opt():
     parser = argparse.ArgumentParser()
@@ -305,6 +313,9 @@ def parse_opt():
     parser.add_argument('--model_list', type=str, default='resnet', help='Regressor model list: resnet, vgg, eff')
     parser.add_argument('--calib', type=str, default=ROOT / 'eval/camera_cal/calib_cam_to_cam.txt', help='Calibration file or path')
     parser.add_argument('--show_result', action='store_true', default=True, help='Show Results with imshow')
+    parser.add_argument('--save_result', action='store_true', default=True, help='Save result')
+    parser.add_argument('--output_path', type=str, default=ROOT / 'runs/detect', help='Save output pat')
+
 
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
@@ -314,7 +325,7 @@ def parse_opt():
 def main(opt):
     check_requirements(exclude=('tensorboard', 'thop'))
     # TODO: change args input
-    detect3d(opt.reg_weights, opt.model_list, opt.source, opt.calib, opt.show_result)
+    detect3d(opt.reg_weights, opt.model_list, opt.source, opt.calib, opt.show_result, opt.save_result, opt.output_path)
 
 if __name__ == "__main__":
     opt = parse_opt()
