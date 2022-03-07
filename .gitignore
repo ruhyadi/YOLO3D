@@ -259,7 +259,6 @@ fabric.properties
 ## Folder
 /3DBBox
 /sandbox
-/dataset
 /old_code
 /eval/image_22
 /notebook

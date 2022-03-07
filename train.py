@@ -7,6 +7,8 @@ import os
 import sys
 from pathlib import Path
 
+from tqdm import tqdm
+
 from script.Dataset import Dataset
 from script.Model import ResNet18, VGG11, OrientationLoss
 
@@ -39,9 +41,10 @@ def train(
     w=0.4,
     num_workers=4,
     lr=0.0001,
+    save_epoch=10,
     train_path=ROOT / 'dataset/KITTI/training',
-    model_path=ROOT / 'weights',
-    model_list='resnet18'
+    model_path=ROOT / 'weights/',
+    select_model='resnet18'
     ):
 
     # directory
@@ -62,8 +65,8 @@ def train(
     data_gen = data.DataLoader(dataset, **params)
 
     # model
-    base_model = model_factory[model_list]
-    model = regressor_factory[model_list](model=base_model).cuda()
+    base_model = model_factory[select_model]
+    model = regressor_factory[select_model](model=base_model).cuda()
     
     # optimizer
     opt_SGD = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
@@ -96,10 +99,73 @@ def train(
 
     total_num_batches = int(len(dataset)/batch_size)
 
+    for epoch in range(first_epoch, epochs+1):
+        curr_batch = 0
+        passes = 0
+        with tqdm(data_gen, unit='batch') as tepoch:
+            for local_batch, local_labels in tepoch:
+                # progress bar
+                tepoch.set_description(f'Epoch {epoch}')
+
+                # ground-truth
+                truth_orient = local_labels['Orientation'].float().cuda()
+                truth_conf = local_labels['Confidence'].float().cuda()
+                truth_dim = local_labels['Dimensions'].float().cuda()
+
+                # convert to cuda
+                local_batch = local_batch.float().cuda()
+
+                # forward
+                [orient, conf, dim] = model(local_batch)
+
+                # loss
+                orient_loss = orient_loss_func(orient, truth_orient, truth_conf)
+                dim_loss = dim_loss_func(dim, truth_dim)
+                
+                truth_conf = torch.max(truth_conf, dim=1)[1]
+                conf_loss = conf_loss_func(conf, truth_conf)
+
+                loss_theta = conf_loss + w*orient_loss
+                loss = alpha*dim_loss + loss_theta
+
+                opt_SGD.zero_grad()
+                loss.backward()
+                opt_SGD.step()
+
+                # progress bar update
+                tepoch.set_postfix(loss=loss.item())
+
+        if epoch % save_epoch == 0:
+            model_name = model_path + f'{select_model}_epoch_{epoch}.pkl'
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': opt_SGD.state_dict(),
+                'loss': loss
+            }, model_name)
+            print(f'[INFO] Saving weights as {model_name}')
+
+def parse_opt():
+    parser = argparse.ArgumentParser(description='Regressor Model Training')
+    parser.add_argument('--epochs', type=int, default=10, help='Number of epochs')
+    parser.add_argument('--batch_size', type=int, default=32, help='Number of batch size')
+    parser.add_argument('--alpha', type=float, default=0.6, help='Aplha default=0.6 DONT CHANGE')
+    parser.add_argument('--w', type=float, default=0.4, help='w DONT CHANGE')
+    parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
+    parser.add_argument('--save_epoch', type=int, default=10, help='Save model every # epochs')
+    parser.add_argument('--train_path', type=str, default=ROOT / 'dataset/KITTI/training', help='Training path KITTI')
+    parser.add_argument('--model_path', type=str, default=ROOT / 'weights', help='Weights path, for load and save model')
+    parser.add_argument('--select_model', type=str, default='resnet18', help='Model selection: {resnet18, vgg11}')
+
+    opt = parser.parse_args()
+
+    return opt
+
+def main(opt):
+    train(**vars(opt))
+
 if __name__ == '__main__':
-    train_path=str(ROOT / 'dataset/KITTI/training')
-    train()
-
-
+    opt = parse_opt()
+    main(opt)
 
 

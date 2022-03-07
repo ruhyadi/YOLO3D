@@ -29,12 +29,11 @@ class ResNet18(nn.Module):
         super(ResNet18, self).__init__()
         self.bins = bins
         self.w = w
-        # extract all layer until [-2]
         self.model = nn.Sequential(*(list(model.children())[:-2]))
 
         # orientation head, for orientation estimation
         self.orientation = nn.Sequential(
-            nn.Linear(512, 256),
+            nn.Linear(512 * 7 * 7, 256),
             nn.ReLU(True),
             nn.Dropout(),
             nn.Linear(256, 256),
@@ -45,7 +44,7 @@ class ResNet18(nn.Module):
 
         # confident head, for orientation estimation
         self.confidence = nn.Sequential(
-            nn.Linear(512, 256),
+            nn.Linear(512 * 7 * 7, 256),
             nn.ReLU(True),
             nn.Dropout(),
             nn.Linear(256, bins) # 2 bins   
@@ -53,18 +52,18 @@ class ResNet18(nn.Module):
 
         # dimension head
         self.dimension = nn.Sequential(
-            nn.Linear(512, 256),
+            nn.Linear(512 * 7 * 7, 512),
             nn.ReLU(True),
             nn.Dropout(),
-            nn.Linear(256, 256),
+            nn.Linear(512, 512),
             nn.ReLU(True),
             nn.Dropout(),
-            nn.Linear(256, 3) # x, y, z
+            nn.Linear(512, 3) # x, y, z
         )
 
     def forward(self, x):
         x = self.model(x)
-        x = x.view(-1, 512)
+        x = x.view(-1, 512 * 7 * 7)
 
         orientation = self.orientation(x)
         orientation = orientation.view(-1, self.bins, 2)
