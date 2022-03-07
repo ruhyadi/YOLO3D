@@ -262,6 +262,7 @@ fabric.properties
 /dataset
 /old_code
 /eval/image_22
+/notebook
 
 ## My Exclude
 notebook.ipynb
