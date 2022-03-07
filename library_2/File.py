@@ -4,7 +4,6 @@ TODO: move the functions that read label from Dataset into here
 """
 import numpy as np
 
-
 def get_calibration_cam_to_image(cab_f):
     for line in open(cab_f):
         if 'P2:' in line:

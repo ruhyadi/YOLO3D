@@ -76,7 +76,6 @@ class Dataset(data.Dataset):
         self.curr_id = ""
         self.curr_img = None
 
-
     # should return (Input, Label)
     def __getitem__(self, index):
         id = self.object_list[index][0]
