@@ -30,7 +30,7 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 def generate_bins(bins):
     angle_bins = np.zeros(bins)
-    interval = 2 * np.pi / bin
+    interval = 2 * np.pi / bins
     for i in range(1, bins):
         angle_bins[i] = i * interval
     angle_bins += interval / 2 # center of bins

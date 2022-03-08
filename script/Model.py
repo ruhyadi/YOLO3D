@@ -24,6 +24,60 @@ def OrientationLoss(orient_batch, orientGT_batch, confGT_batch):
 
     return -1 * torch.cos(theta_diff - estimated_theta_diff).mean()
 
+class ResNet(nn.Module):
+    def __init__(self, model=None, bins=2, w=0.4):
+        super(ResNet, self).__init__()
+        self.bins = bins
+        self.w = w
+        self.model = model
+
+        # orientation head, for orientation estimation
+        self.orientation = nn.Sequential(
+            nn.Linear(512, 256),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(256, 256),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(256, bins*2) # 4 bins
+        )
+
+        # confident head, for orientation estimation
+        self.confidence = nn.Sequential(
+                    nn.Linear(512, 256),
+                    nn.ReLU(True),
+                    nn.Dropout(),
+                    nn.Linear(256, 256),
+                    nn.ReLU(True),
+                    nn.Dropout(),
+                    nn.Linear(256, bins),
+        )
+
+        # dimension head
+        self.dimension = nn.Sequential(
+            nn.Linear(512, 256),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(256, 256),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(256, 3) # x, y, z
+        )
+
+    def forward(self, x):
+        x = self.model(x)
+        x = x.view(-1, 512)
+
+        orientation = self.orientation(x)
+        orientation = orientation.view(-1, self.bins, 2)
+        orientation = F.normalize(orientation, dim=2)
+        
+        confidence = self.confidence(x)
+
+        dimension = self.dimension(x)
+
+        return orientation, confidence, dimension
+
 class ResNet18(nn.Module):
     def __init__(self, model=None, bins=2, w=0.4):
         super(ResNet18, self).__init__()
