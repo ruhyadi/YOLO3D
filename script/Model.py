@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torchvision.models import resnet18
 
 def OrientationLoss(orient_batch, orientGT_batch, confGT_batch):
     """
@@ -29,6 +28,7 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.bins = bins
         self.w = w
+        model.fc = nn.Linear(512, 512)
         self.model = model
 
         # orientation head, for orientation estimation
@@ -182,8 +182,4 @@ class VGG11(nn.Module):
         return orientation, confidence, dimension
 
 if __name__ == '__main__':
-    # try resnet model 
-    resnet = resnet18(pretrained=True)
-    reg_model = ResNet18(model=resnet)
-
-    print(reg_model)
+    print('test')
