@@ -39,7 +39,7 @@ def train(
     batch_size=32,
     alpha=0.6,
     w=0.4,
-    num_workers=4,
+    num_workers=2,
     lr=0.0001,
     save_epoch=10,
     train_path=ROOT / 'dataset/KITTI/training',
@@ -102,7 +102,7 @@ def train(
     for epoch in range(first_epoch, epochs+1):
         curr_batch = 0
         passes = 0
-        with tqdm(data_gen, unit='batch') as tepoch:
+        with tqdm(data_gen, unit=' batch') as tepoch:
             for local_batch, local_labels in tepoch:
                 # progress bar
                 tepoch.set_description(f'Epoch {epoch}')
@@ -136,7 +136,7 @@ def train(
                 tepoch.set_postfix(loss=loss.item())
 
         if epoch % save_epoch == 0:
-            model_name = model_path + f'{select_model}_epoch_{epoch}.pkl'
+            model_name = os.path.join(model_path, f'{select_model}_epoch_{epoch}.pkl')
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
@@ -151,6 +151,7 @@ def parse_opt():
     parser.add_argument('--batch_size', type=int, default=32, help='Number of batch size')
     parser.add_argument('--alpha', type=float, default=0.6, help='Aplha default=0.6 DONT CHANGE')
     parser.add_argument('--w', type=float, default=0.4, help='w DONT CHANGE')
+    parser.add_argument('--num_workers', type=int, default=2, help='Total # workers, for colab & kaggle use 2')
     parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
     parser.add_argument('--save_epoch', type=int, default=10, help='Save model every # epochs')
     parser.add_argument('--train_path', type=str, default=ROOT / 'dataset/KITTI/training', help='Training path KITTI')

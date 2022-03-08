@@ -262,7 +262,13 @@ fabric.properties
 /old_code
 /eval/image_22
 /notebook
+/library_2
+/torch_lib
+/Kitti
+/eval
+/old_code_data
 
 ## My Exclude
 notebook.ipynb
 *.pkl
+
