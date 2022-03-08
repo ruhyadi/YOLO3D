@@ -32,7 +32,6 @@ import glob
 
 import cv2
 import torch
-import torch.backends.cudnn as cudnn
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -44,18 +43,18 @@ from models.common import DetectMultiBackend
 from utils.datasets import IMG_FORMATS, VID_FORMATS, LoadImages, LoadStreams
 from utils.general import (LOGGER, check_file, check_img_size, check_imshow, check_requirements, colorstr,
                            increment_path, non_max_suppression, print_args, scale_coords, strip_optimizer, xyxy2xywh)
-from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync
 
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 from torchvision.models import resnet18
 
-from torch_lib.Dataset import generate_bins, DetectedObject
+import numpy as np
+
+from script.Dataset import generate_bins, DetectedObject
 from library.Math import *
 from library.Plotting import *
-from torch_lib import Model, ClassAverages
+from script import Model, ClassAverages
 
 class Bbox:
     def __init__(self, box_2d, class_):
@@ -214,8 +213,7 @@ def detect3d(
     # load model
     if model_list == 'resnet':
         resnet = resnet18(pretrained=True)
-        resnet.fc = nn.Linear(512, 512)
-        regressor = Model.ResNet(model=resnet, bins=2).cuda()
+        regressor = Model.ResNet18(model=resnet, bins=2).cuda()
 
         # load weight
         checkpoint = torch.load(reg_weights)
@@ -277,7 +275,6 @@ def detect3d(
             print(output_path)
             cv2.imwrite(f'{output_path}/{i:03d}.png', img)
 
-
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
@@ -309,7 +306,7 @@ def parse_opt():
     parser.add_argument('--bbox3d', default=False, action='store_true', help='store bbox to bbox3d')
     
     # detect3d args
-    parser.add_argument('--reg_weights', type=str, default='weights/resnet_10.pkl', help='Regressor model weights')
+    parser.add_argument('--reg_weights', type=str, default='weights/resnet18_epoch_10.pkl', help='Regressor model weights')
     parser.add_argument('--model_list', type=str, default='resnet', help='Regressor model list: resnet, vgg, eff')
     parser.add_argument('--calib', type=str, default=ROOT / 'eval/camera_cal/calib_cam_to_cam.txt', help='Calibration file or path')
     parser.add_argument('--show_result', action='store_true', default=True, help='Show Results with imshow')

@@ -28,6 +28,15 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
+def generate_bins(bins):
+    angle_bins = np.zeros(bins)
+    interval = 2 * np.pi / bin
+    for i in range(1, bins):
+        angle_bins[i] = i * interval
+    angle_bins += interval / 2 # center of bins
+
+    return angle_bins
+
 class Dataset(data.Dataset):
     def __init__(self, path, bins=2, overlap=0.1):
         # dataset directory
@@ -49,11 +58,7 @@ class Dataset(data.Dataset):
         # create angle bins
         # TODO: get understand this
         self.bins = bins
-        self.angle_bins = np.zeros(bins)
-        self.interval = 2 * np.pi / bins
-        for i in range(1,bins):
-            self.angle_bins[i] = i * self.interval
-        self.angle_bins += self.interval / 2 # center of the bin
+        self.angle_bins = generate_bins(self.bins)
 
         self.overlap = overlap
 
