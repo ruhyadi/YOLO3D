@@ -265,12 +265,11 @@ fabric.properties
 /library_2
 /torch_lib
 /Kitti
-/eval
 /old_code_data
 
-/eval
 /weights/old
 
+/eval_images/image_22
 
 ## My Exclude
 notebook.ipynb
