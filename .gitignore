@@ -259,10 +259,19 @@ fabric.properties
 ## Folder
 /3DBBox
 /sandbox
-/dataset
 /old_code
 /eval/image_22
+/notebook
+/library_2
+/torch_lib
+/Kitti
+/old_code_data
+
+/weights/old
+
+/eval_images/image_22
 
 ## My Exclude
 notebook.ipynb
 *.pkl
+
