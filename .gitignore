@@ -271,7 +271,10 @@ fabric.properties
 
 /eval_images/image_22
 
+/dataset_dummy
+
 ## My Exclude
 notebook.ipynb
 *.pkl
+*.ipynb
 
