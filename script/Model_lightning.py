@@ -43,6 +43,9 @@ class Model(pl.LightningModule):
             nn.Linear(self.in_features, 256),
             nn.ReLU(True),
             nn.Dropout(),
+            nn.Linear(256, 256),
+            nn.ReLU(True),
+            nn.Dropout(),
             nn.Linear(256, bins),
         )
 
