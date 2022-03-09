@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 
 from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter()
 
 from script.Dataset import Dataset
 from script.Model import ResNet18, VGG11, OrientationLoss
@@ -78,7 +80,7 @@ def train(
 
     # load previous weights
     latest_model = None
-    first_epoch = 0
+    first_epoch = 1
     if not os.path.isdir(model_path):
         os.mkdir(model_path)
     else:
@@ -128,6 +130,9 @@ def train(
                 loss_theta = conf_loss + w*orient_loss
                 loss = alpha*dim_loss + loss_theta
 
+                # write tensorboard
+                writer.add_scalar('Loss/train', loss, epoch)
+
                 opt_SGD.zero_grad()
                 loss.backward()
                 opt_SGD.step()
@@ -144,6 +149,9 @@ def train(
                 'loss': loss
             }, model_name)
             print(f'[INFO] Saving weights as {model_name}')
+
+    writer.flush()
+    writer.close()
 
 def parse_opt():
     parser = argparse.ArgumentParser(description='Regressor Model Training')
