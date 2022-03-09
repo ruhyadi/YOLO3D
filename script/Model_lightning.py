@@ -5,7 +5,7 @@ Script for regressor model generator with pytorch lightning
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import resnet18, vgg11
+from torchvision import models
 
 import pytorch_lightning as pl
 
@@ -24,8 +24,8 @@ class Model(pl.LightningModule):
         self.orient_loss_func = OrientationLoss
 
         # base model
-        self.model = model_factory[model_select][0]
-        self.in_features = model_factory[model_select][1]
+        self.model = model_factory(model_select)[0]
+        self.in_features = model_factory(model_select)[1]
 
         # orientation head, for orientation estimation
         self.orientation = nn.Sequential(
@@ -144,15 +144,15 @@ def OrientationLoss(orient_batch, orientGT_batch, confGT_batch):
 def model_factory(model_select):
 
     # resnet light
-    resnet = resnet18(pretrained=True)
+    resnet = models.resnet18(pretrained=True)
     resnet.fc = nn.Linear(512, 512)
 
     # resnet18
-    resnet18 = resnet18(pretrained=True)
+    resnet18 = models.resnet18(pretrained=True)
     resnet18 = nn.Sequential(*(list(resnet18.children())[:-2]))
 
     # vgg11
-    vgg11 = vgg11(pretrained=True)
+    vgg11 = models.vgg11(pretrained=True)
     vgg11 = vgg11.features
 
     # store [model, in_features]

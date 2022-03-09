@@ -1,7 +1,6 @@
 """
 Script for Dataset Utilities
 """
-from ast import Param
 import os
 import sys
 from pathlib import Path
@@ -47,21 +46,21 @@ class KITTIDataModule(pl.LightningDataModule):
         num_workers=2,
         val_split=0.1
         ):
-        super().__init__()
+        super(KITTIDataModule, self).__init__()
         self.dataset_path = dataset_path
         self.val_split = val_split
         self.train_split = 1.0 - self.val_split
         self.params = {'batch_size': batch_size, 'shuffle': True, 'num_workers': num_workers}
 
-    def setup(self):
+    def setup(self, stage=None):
         """
         Split dataset to training dan validation
         """
         self.KITTI = Dataset(path=self.dataset_path)
-        dataset_size = len(self.KITTI)
-        train_size = round(self.train_split * dataset_size)
-        val_size = dataset_size - train_size
-        self.KITTI_train, self.KITTI_val = random_split(self.KITTI, [train_size, val_size])
+        self.dataset_size = len(self.KITTI)
+        self.train_size = round(self.train_split * self.dataset_size)
+        self.val_size = self.dataset_size - self.train_size
+        self.KITTI_train, self.KITTI_val = random_split(self.KITTI, [self.train_size, self.val_size])
 
     def train_dataloader(self):
         train_loader = DataLoader(self.KITTI_train, **self.params)

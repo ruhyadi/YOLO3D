@@ -28,9 +28,7 @@ def train(
     num_workers=2,
     gpu=1,
     val_split=0.1,
-    save_epoch=10,
     model_path=ROOT / 'weights/',
-    
     ):
 
     # initiate callback mode
@@ -50,12 +48,15 @@ def train(
         progress_bar_refresh_rate=20)
 
     # initiate model
-    Model = Model(model_select=model_select)
+    model = Model(model_select=model_select)
 
     # load weights
-    latest_model = [x for x in sorted(os.listdir(model_path)) if x.endswith('.pkl')][-1]
+    try:
+        latest_model = [x for x in sorted(os.listdir(model_path)) if x.endswith('.pkl')][-1]
+    except:
+        latest_model = None
     if latest_model is not None :
-        Model.load_from_checkpoint(latest_model)
+        model.load_from_checkpoint(latest_model)
 
         print(f'[INFO] Use previous model {latest_model}')
 
@@ -68,20 +69,19 @@ def train(
     )
 
     # train model
-    trainer.fit(model=Model, datamodule=dataset)
+    trainer.fit(model=model, datamodule=dataset)
 
 def parse_opt():
     parser = argparse.ArgumentParser(description='Regressor Model Training')
+    parser.add_argument('--train_path', type=str, default=ROOT / 'dataset_dummy/training', help='Training path KITTI')
+    parser.add_argument('--checkpoint_path', type=str, default=ROOT / 'weights/checkpoint', help='Checkpoint directory')
+    parser.add_argument('--model_select', type=str, default='resnet18', help='Model selection: {resnet18, vgg11}')
     parser.add_argument('--epochs', type=int, default=10, help='Number of epochs')
     parser.add_argument('--batch_size', type=int, default=32, help='Number of batch size')
-    parser.add_argument('--alpha', type=float, default=0.6, help='Aplha default=0.6 DONT CHANGE')
-    parser.add_argument('--w', type=float, default=0.4, help='w DONT CHANGE')
     parser.add_argument('--num_workers', type=int, default=2, help='Total # workers, for colab & kaggle use 2')
-    parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
-    parser.add_argument('--save_epoch', type=int, default=10, help='Save model every # epochs')
-    parser.add_argument('--train_path', type=str, default=ROOT / 'dataset/KITTI/training', help='Training path KITTI')
+    parser.add_argument('--gpu', type=int, default=0, help='Numbers of GPU, default=1')
+    parser.add_argument('--val_split', type=float, default=0.2, help='Validation split percentage')
     parser.add_argument('--model_path', type=str, default=ROOT / 'weights', help='Weights path, for load and save model')
-    parser.add_argument('--select_model', type=str, default='resnet18', help='Model selection: {resnet18, vgg11}')
 
     opt = parser.parse_args()
 
