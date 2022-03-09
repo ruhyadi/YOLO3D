@@ -1,18 +1,13 @@
 """
 Script for Dataset Utilities
 """
-import argparse
-from cProfile import label
 import os
 import sys
 from pathlib import Path
-import glob
 
 import numpy as np
 import cv2
 
-import torch
-import torchvision
 from torchvision import transforms
 
 from torch.utils import data
@@ -59,7 +54,7 @@ class Dataset(data.Dataset):
         # TODO: get understand this
         self.bins = bins
         self.angle_bins = generate_bins(self.bins)
-
+        self.interval = 2 * np.pi / self.bins
         self.overlap = overlap
 
         # ranges for confidence
