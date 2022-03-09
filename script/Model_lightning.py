@@ -11,7 +11,8 @@ import pytorch_lightning as pl
 
 class Model(pl.LightningModule):
     def __init__(self, model_select='resnet18', bins=2, w=0.4, lr=0.0001, alpha=0.6):
-        super().__init__()
+        super(Model, self).__init__()
+        self.save_hyperparameters()
         self.bins = bins
         self.w = w
         self.learning_rate = lr

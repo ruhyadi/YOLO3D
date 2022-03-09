@@ -7,18 +7,11 @@ import os
 import sys
 from pathlib import Path
 
-from tqdm import tqdm
-
-from script.Dataset import Dataset
-from script.Model import ResNet18, VGG11, OrientationLoss
-
-import torch
-import torch.nn as nn
-import torchvision
-from torchvision.models import resnet18, vgg11
-from torch.utils import data
+from script.Dataset_lightning import Dataset, KITTIDataModule
+from script.Model_lightning import Model
 
 from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -26,32 +19,56 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-# model factory to choose model
-model_factory = {
-    'resnet18': resnet18(pretrained=True),
-    'vgg11': vgg11(pretrained=True)
-}
-regressor_factory = {
-    'resnet18': ResNet18,
-    'vgg11': VGG11
-}
-
 def train(
+    train_path=ROOT / 'dataset/KITTI/training',
+    checkpoint_path=ROOT / 'weights/checkpoints',
+    model_select='resnet18',
     epochs=10,
     batch_size=32,
-    gpu=1,
-    alpha=0.6,
-    w=0.4,
     num_workers=2,
-    lr=0.0001,
+    gpu=1,
+    val_split=0.1,
     save_epoch=10,
-    train_path=ROOT / 'dataset/KITTI/training',
     model_path=ROOT / 'weights/',
-    select_model='resnet18'
+    
     ):
 
-    trainer = Trainer(gpus=gpu, max_epochs=epochs, progress_bar_refresh_rate=20)
+    # initiate callback mode
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_loss',
+        dirpath=checkpoint_path,
+        filename='model_{epoch:02d}_{val_loss:.2f}',
+        save_top_k=3,
+        mode='min'
+        )
+    
+    # initiate trainer
+    trainer = Trainer(
+        callbacks=[checkpoint_callback],
+        gpus=gpu,
+        max_epochs=epochs,
+        progress_bar_refresh_rate=20)
 
+    # initiate model
+    Model = Model(model_select=model_select)
+
+    # load weights
+    latest_model = [x for x in sorted(os.listdir(model_path)) if x.endswith('.pkl')][-1]
+    if latest_model is not None :
+        Model.load_from_checkpoint(latest_model)
+
+        print(f'[INFO] Use previous model {latest_model}')
+
+    # initiate dataset
+    dataset = KITTIDataModule(
+        dataset_path=train_path,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        val_split=val_split,
+    )
+
+    # train model
+    trainer.fit(model=Model, datamodule=dataset)
 
 def parse_opt():
     parser = argparse.ArgumentParser(description='Regressor Model Training')
