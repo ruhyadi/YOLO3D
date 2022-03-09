@@ -44,8 +44,8 @@ def train(
     trainer = Trainer(
         callbacks=[checkpoint_callback],
         gpus=gpu,
-        max_epochs=epochs,
-        progress_bar_refresh_rate=20)
+        min_epochs=1,
+        max_epochs=epochs)
 
     # initiate model
     model = Model(model_select=model_select)

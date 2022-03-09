@@ -22,18 +22,18 @@ python train.py \
     --model_path ./weights \
     --select_model resnet18
 ```
-
-parser = argparse.ArgumentParser(description='Regressor Model Training')
-    parser.add_argument('--epochs', type=int, default=10, help='Number of epochs')
-    parser.add_argument('--batch_size', type=int, default=32, help='Number of batch size')
-    parser.add_argument('--alpha', type=float, default=0.6, help='Aplha default=0.6 DONT CHANGE')
-    parser.add_argument('--w', type=float, default=0.4, help='w DONT CHANGE')
-    parser.add_argument('--num_workers', type=int, default=2, help='Total # workers, for colab & kaggle use 2')
-    parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
-    parser.add_argument('--save_epoch', type=int, default=10, help='Save model every # epochs')
-    parser.add_argument('--train_path', type=str, default=ROOT / 'dataset/KITTI/training', help='Training path KITTI')
-    parser.add_argument('--model_path', type=str, default=ROOT / 'weights', help='Weights path, for load and save model')
-    parser.add_argument('--select_model', type=str, default='resnet18', help='Model selection: {resnet18, vgg11}')
+```
+!python train_lightning.py \
+    --train_path dataset/KITTI/training \
+    --checkpoint_path weights/checkpoints \
+    --model_select resnet18 \
+    --epochs 10 \
+    --batch_size 32 \
+    --num_workers 2 \
+    --gpu 1 \
+    --val_split 0.1 \
+    --model_path weights
+```
 
 
 ![img01](docs/001.png)

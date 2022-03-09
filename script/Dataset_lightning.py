@@ -63,11 +63,11 @@ class KITTIDataModule(pl.LightningDataModule):
         self.KITTI_train, self.KITTI_val = random_split(self.KITTI, [self.train_size, self.val_size])
 
     def train_dataloader(self):
-        train_loader = DataLoader(self.KITTI_train, **self.params)
+        train_loader = DataLoader(self.KITTI_train, **self.params)          
         return train_loader
 
     def val_dataloader(self):
-        val_loader = DataLoader(self.KITTI_val, **self.params)
+        val_loader = DataLoader(self.KITTI_val, batch_size=self.params['batch_size'], shuffle=False, num_workers=self.params['num_workers'])
         return val_loader
 
 
