@@ -131,10 +131,10 @@ class ResNet18(nn.Module):
 
 class VGG11(nn.Module):
     def __init__(self, model=None, bins=2, w=0.4):
-        super(ResNet18, self).__init__()
+        super(VGG11, self).__init__()
         self.bins = bins
         self.w = w
-        # extract all layer until [-2]
+        # vgg11 features
         self.model = model.features
 
         # orientation head, for orientation estimation
