@@ -135,11 +135,11 @@ class VGG11(nn.Module):
         self.bins = bins
         self.w = w
         # extract all layer until [-2]
-        self.model = nn.Sequential(*(list(model.children())[:-2]))
+        self.model = model.features
 
         # orientation head, for orientation estimation
         self.orientation = nn.Sequential(
-            nn.Linear(512, 256),
+            nn.Linear(512 * 7 * 7, 256),
             nn.ReLU(True),
             nn.Dropout(),
             nn.Linear(256, 256),
@@ -150,15 +150,18 @@ class VGG11(nn.Module):
 
         # confident head, for orientation estimation
         self.confidence = nn.Sequential(
-            nn.Linear(512, 256),
+            nn.Linear(512 * 7 * 7, 256),
             nn.ReLU(True),
             nn.Dropout(),
-            nn.Linear(256, bins) # 2 bins   
+            nn.Linear(256, 256),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(256, bins)  
         )
 
         # dimension head
         self.dimension = nn.Sequential(
-            nn.Linear(512, 256),
+            nn.Linear(512 * 7 * 7, 256),
             nn.ReLU(True),
             nn.Dropout(),
             nn.Linear(256, 256),
@@ -169,7 +172,7 @@ class VGG11(nn.Module):
 
     def forward(self, x):
         x = self.model(x)
-        x = x.view(-1, 512)
+        x = x.view(-1, 512 * 7 * 7)
 
         orientation = self.orientation(x)
         orientation = orientation.view(-1, self.bins, 2)
