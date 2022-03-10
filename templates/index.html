@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>YOLO3D</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    </head>
+
+    <body>
+        <div class="container">
+            <div class="starter-template">
+                <h1>3D Object Detection with YOLO</h1>
+                <p>By Didi Ruhyadi - github.com/ruhyadi/yolo3d</p>
+            </div>
+        </div>
+
+        <header class="navbar">
+            <div align="center">
+                <h4>Upload Image</h4>
+                <form action="/upload" method="post" enctype="multipart/form-data" >
+                    <div align="center">
+                        <label class="btn btn-default btn-file">
+                            Browse Image<input type="file" name="image" style="display: none;">
+                        </label>
+                        <input type="submit" value="Submit" class="btn btn-primary">
+                    </div>
+                </form>
+            </div>
+
+        </header>
+
+        <div class="text-center">
+            {% if init %}
+                {% if detect %}
+                    <div class="alert alert-success" style="margin-top:18px;">
+                        Pattern <strong>Detected</strong> on Video
+                    </div>
+                    <div>
+                        <img src="{{ image_to_show }}">
+                    </div>
+                {% else %}
+                    <div class="alert alert-danger" style="margin-top:18px;">
+                        No Pattern Detected
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </body>
+</html>

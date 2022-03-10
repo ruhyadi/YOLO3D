@@ -86,12 +86,12 @@ def detect3d(
         
         # Run detection 2d
         dets = detect2d(
-            weights=opt.weights,
+            weights='yolov5s.pt',
             source=img_path,
-            data=opt.data,
-            imgsz=opt.imgsz,
-            device=opt.device,
-            classes=opt.classes
+            data='data/coco128.yaml',
+            imgsz=[640, 640],
+            device=0,
+            classes=[0, 2, 3, 5]
         )
 
         for det in dets:

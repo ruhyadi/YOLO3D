@@ -11,7 +11,7 @@ def get_weights(weights):
     weights_list = {
         'resnet': '1Bw4gUsRBxy8XZDGchPJ_URQjbHItikjw',
         'resnet18': '1k_v1RrDO6da_NDhBtMZL5c0QSogCmiRn',
-        'vgg11': ''
+        'vgg11': '1vZcB-NaPUCovVA-pH-g-3NNJuUA948ni'
     }
 
     url = f"https://drive.google.com/uc?id={weights_list[weights]}"
