@@ -119,11 +119,9 @@ class Model(pl.LightningModule):
         return {'val_loss': avg_val_loss}
 
     def configure_optimizers(self):
-        optimizer = torch.optim.SGD(self.parameters(), lr=self.learning_rate)
-        # TODO: maybe delete, gak ada di paper
-        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1)
+        optimizer = torch.optim.SGD(self.parameters(), lr=self.learning_rate, momentum=0.9)
         
-        return [optimizer], [lr_scheduler]
+        return optimizer
 
 def OrientationLoss(orient_batch, orientGT_batch, confGT_batch):
     """
