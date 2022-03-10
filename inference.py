@@ -63,10 +63,9 @@ def detect3d(
     output_path
     ):
 
-    calib = str(calib_file)
-
     # Directory
     imgs_path = glob.glob(str(source) + '/*')
+    calib = str(calib_file)
 
     # load model
     base_model = model_factory[model_select]

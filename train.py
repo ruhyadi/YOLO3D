@@ -4,10 +4,15 @@ Script for training Regressor Model
 
 import argparse
 import os
+from random import shuffle
 import sys
 from pathlib import Path
 
 from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter()
+
+from comet_ml import Experiment
 
 from script.Dataset import Dataset
 from script.Model import ResNet18, VGG11, OrientationLoss
@@ -34,6 +39,7 @@ regressor_factory = {
     'vgg11': VGG11
 }
 
+
 def train(
     epochs=10,
     batch_size=32,
@@ -55,21 +61,33 @@ def train(
     print('[INFO] Loading dataset...')
     dataset = Dataset(train_path)
 
-    params = {
-        'batch_size': batch_size,
-        'shuffle': True,
-        'num_workers': num_workers
+    # hyper_params
+    hyper_params = {
+    'epochs': epochs,
+    'batch_size': batch_size,
+    'w': w,
+    'num_workers': num_workers,
+    'lr': lr,
+    'shuffle': True
     }
 
+    # comet ml experiment
+    experiment = Experiment('IFsibHtChMnB2b5FuZzhiMswT', project_name="YOLO3D")
+    experiment.log_parameters(hyper_params)
+
     # data generator
-    data_gen = data.DataLoader(dataset, **params)
+    data_gen = data.DataLoader(
+        dataset,
+        batch_size=hyper_params['batch_size'],
+        shuffle=hyper_params['shuffle'],
+        num_workers=hyper_params['num_workers'])
 
     # model
     base_model = model_factory[select_model]
     model = regressor_factory[select_model](model=base_model).cuda()
     
     # optimizer
-    opt_SGD = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+    opt_SGD = torch.optim.SGD(model.parameters(), lr=hyper_params['lr'], momentum=0.9)
 
     # loss function
     conf_loss_func = nn.CrossEntropyLoss().cuda()
@@ -78,7 +96,7 @@ def train(
 
     # load previous weights
     latest_model = None
-    first_epoch = 0
+    first_epoch = 1
     if not os.path.isdir(model_path):
         os.mkdir(model_path)
     else:
@@ -97,53 +115,61 @@ def train(
         print(f'[INFO] Using previous model {latest_model} at {first_epoch} epochs')
         print('[INFO] Resuming training...')
 
-    total_num_batches = int(len(dataset)/batch_size)
+    total_num_batches = int(len(dataset) / hyper_params['batch_size'])
 
-    for epoch in range(first_epoch, epochs+1):
-        curr_batch = 0
-        passes = 0
-        with tqdm(data_gen, unit=' batch') as tepoch:
-            for local_batch, local_labels in tepoch:
-                # progress bar
-                tepoch.set_description(f'Epoch {epoch}')
+    with experiment.train():
+        for epoch in range(first_epoch, int(hyper_params['epochs'])+1):
+            curr_batch = 0
+            passes = 0
+            with tqdm(data_gen, unit='batch') as tepoch:
+                for local_batch, local_labels in tepoch:
+                    # progress bar
+                    tepoch.set_description(f'Epoch {epoch}')
 
-                # ground-truth
-                truth_orient = local_labels['Orientation'].float().cuda()
-                truth_conf = local_labels['Confidence'].float().cuda()
-                truth_dim = local_labels['Dimensions'].float().cuda()
+                    # ground-truth
+                    truth_orient = local_labels['Orientation'].float().cuda()
+                    truth_conf = local_labels['Confidence'].float().cuda()
+                    truth_dim = local_labels['Dimensions'].float().cuda()
 
-                # convert to cuda
-                local_batch = local_batch.float().cuda()
+                    # convert to cuda
+                    local_batch = local_batch.float().cuda()
 
-                # forward
-                [orient, conf, dim] = model(local_batch)
+                    # forward
+                    [orient, conf, dim] = model(local_batch)
 
-                # loss
-                orient_loss = orient_loss_func(orient, truth_orient, truth_conf)
-                dim_loss = dim_loss_func(dim, truth_dim)
-                
-                truth_conf = torch.max(truth_conf, dim=1)[1]
-                conf_loss = conf_loss_func(conf, truth_conf)
+                    # loss
+                    orient_loss = orient_loss_func(orient, truth_orient, truth_conf)
+                    dim_loss = dim_loss_func(dim, truth_dim)
+                    
+                    truth_conf = torch.max(truth_conf, dim=1)[1]
+                    conf_loss = conf_loss_func(conf, truth_conf)
 
-                loss_theta = conf_loss + w*orient_loss
-                loss = alpha*dim_loss + loss_theta
+                    loss_theta = conf_loss + w*orient_loss
+                    loss = alpha*dim_loss + loss_theta
 
-                opt_SGD.zero_grad()
-                loss.backward()
-                opt_SGD.step()
+                    # write tensorboard and comet ml
+                    writer.add_scalar('Loss/train', loss, epoch)
+                    experiment.log_metric('Loss/train', loss, epoch=epoch)
 
-                # progress bar update
-                tepoch.set_postfix(loss=loss.item())
+                    opt_SGD.zero_grad()
+                    loss.backward()
+                    opt_SGD.step()
 
-        if epoch % save_epoch == 0:
-            model_name = os.path.join(model_path, f'{select_model}_epoch_{epoch}.pkl')
-            torch.save({
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': opt_SGD.state_dict(),
-                'loss': loss
-            }, model_name)
-            print(f'[INFO] Saving weights as {model_name}')
+                    # progress bar update
+                    tepoch.set_postfix(loss=loss.item())
+
+            if epoch % save_epoch == 0:
+                model_name = os.path.join(model_path, f'{select_model}_epoch_{epoch}.pkl')
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': opt_SGD.state_dict(),
+                    'loss': loss
+                }, model_name)
+                print(f'[INFO] Saving weights as {model_name}')
+
+    writer.flush()
+    writer.close()
 
 def parse_opt():
     parser = argparse.ArgumentParser(description='Regressor Model Training')

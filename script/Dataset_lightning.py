@@ -9,8 +9,12 @@ import numpy as np
 import cv2
 
 from torchvision import transforms
-
 from torch.utils import data
+
+from torch.utils.data import DataLoader
+from torch.utils.data import random_split
+
+import pytorch_lightning as pl
 
 # library
 from library.Calib import get_P
@@ -23,6 +27,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
+
 def generate_bins(bins):
     angle_bins = np.zeros(bins)
     interval = 2 * np.pi / bins
@@ -32,12 +37,45 @@ def generate_bins(bins):
 
     return angle_bins
 
+
+class KITTIDataModule(pl.LightningDataModule):
+    def __init__(
+        self,
+        dataset_path='/dataset/KITTI/training',
+        batch_size=32,
+        num_workers=2,
+        val_split=0.1
+        ):
+        super(KITTIDataModule, self).__init__()
+        self.dataset_path = dataset_path
+        self.val_split = val_split
+        self.train_split = 1.0 - self.val_split
+        self.params = {'batch_size': batch_size, 'shuffle': True, 'num_workers': num_workers}
+
+    def setup(self, stage=None):
+        """
+        Split dataset to training dan validation
+        """
+        self.KITTI = Dataset(path=self.dataset_path)
+        self.dataset_size = len(self.KITTI)
+        self.train_size = round(self.train_split * self.dataset_size)
+        self.val_size = self.dataset_size - self.train_size
+        self.KITTI_train, self.KITTI_val = random_split(self.KITTI, [self.train_size, self.val_size])
+
+    def train_dataloader(self):
+        train_loader = DataLoader(self.KITTI_train, **self.params)          
+        return train_loader
+
+    def val_dataloader(self):
+        val_loader = DataLoader(self.KITTI_val, batch_size=self.params['batch_size'], shuffle=False, num_workers=self.params['num_workers'])
+        return val_loader
+
+
 class Dataset(data.Dataset):
     def __init__(self, path, bins=2, overlap=0.1):
         # dataset directory
         self.top_img_path = path + '/image_2/'
         self.top_label_path = path + '/label_2/'
-        # TODO: remove top calib
         self.top_calib_path = path + '/calib/'
 
         # calibration file
@@ -50,11 +88,10 @@ class Dataset(data.Dataset):
         self.ids = [x.split('.')[0] for x in sorted(os.listdir(self.top_calib_path))]
         self.num_images = len(self.ids)
 
-        # create angle bins
-        # TODO: get understand this
+        # implement Multibins method
         self.bins = bins
         self.angle_bins = generate_bins(self.bins)
-        self.interval = 2 * np.pi / self.bins
+        self.interval = 2 * np.pi / bins
         self.overlap = overlap
 
         # ranges for confidence
@@ -243,10 +280,7 @@ class DetectedObject:
             mean=[0.485, 0.456, 0.406],
             std=[0.229, 0.224, 0.225])
 
-        process = transforms.Compose([
-            transforms.ToTensor(),
-            normalize
-        ])
+        process = transforms.Compose([transforms.ToTensor(), normalize])
 
         # crop image
         pt1, pt2 = box_2d[0], box_2d[1]
@@ -259,10 +293,5 @@ class DetectedObject:
         return batch
 
 
-
-
 if __name__ == '__main__':
-    train_path=ROOT / 'dataset/KITTI/training'
-    dataset = Dataset(train_path)
-    print(dataset)
-
+    print('working')
