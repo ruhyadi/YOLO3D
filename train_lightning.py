@@ -3,6 +3,7 @@ Script for training Regressor Model with pytorch lightning
 """
 
 import argparse
+from asyncio.log import logger
 import os
 import sys
 from pathlib import Path
@@ -10,8 +11,10 @@ from pathlib import Path
 from script.Dataset_lightning import Dataset, KITTIDataModule
 from script.Model_lightning import Model
 
+from comet_ml import Experiment
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import CometLogger
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -31,6 +34,12 @@ def train(
     model_path=ROOT / 'weights/',
     ):
 
+    # comet ml
+    comet_logger = CometLogger(
+        api_key='IFsibHtChMnB2b5FuZzhiMswT',
+        project_name="YOLO3D"
+        )
+
     # initiate callback mode
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
@@ -42,6 +51,7 @@ def train(
     
     # initiate trainer
     trainer = Trainer(
+        logger=comet_logger,
         callbacks=[checkpoint_callback],
         gpus=gpu,
         min_epochs=1,
