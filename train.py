@@ -4,6 +4,7 @@ Script for training Regressor Model
 
 import argparse
 import os
+from random import shuffle
 import sys
 from pathlib import Path
 
@@ -75,7 +76,11 @@ def train(
     experiment.log_parameters(hyper_params)
 
     # data generator
-    data_gen = data.DataLoader(dataset, **hyper_params)
+    data_gen = data.DataLoader(
+        dataset,
+        batch_size=hyper_params['batch_size'],
+        shuffle=hyper_params['shuffle'],
+        num_workers=hyper_params['num_workers'])
 
     # model
     base_model = model_factory[select_model]
