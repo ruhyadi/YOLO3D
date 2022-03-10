@@ -3,7 +3,7 @@ import gdown
 import argparse
 
 parser = argparse.ArgumentParser(description='Download weights model')
-parser.add_argument('--weights', type=str, default='resnet', help='Weights name')
+parser.add_argument('--weights', type=str, help='Weights name')
 
 args = parser.parse_args()
 

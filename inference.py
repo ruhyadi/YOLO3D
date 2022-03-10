@@ -230,7 +230,7 @@ def detect2d(
 
 def plot3d(
     img,
-    cam_to_img,
+    proj_matrix,
     box_2d,
     dimensions,
     alpha,
@@ -239,14 +239,14 @@ def plot3d(
     ):
 
     # the math! returns X, the corners used for constraint
-    location, X = calc_location(dimensions, cam_to_img, box_2d, alpha, theta_ray)
+    location, X = calc_location(dimensions, proj_matrix, box_2d, alpha, theta_ray)
 
     orient = alpha + theta_ray
 
     if img_2d is not None:
         plot_2d_box(img_2d, box_2d)
 
-    plot_3d_box(img, cam_to_img, orient, dimensions, location) # 3d boxes
+    plot_3d_box(img, proj_matrix, orient, dimensions, location) # 3d boxes
 
     return location
 
@@ -261,8 +261,8 @@ def parse_opt():
     parser.add_argument('--reg_weights', type=str, default='weights/epoch_10.pkl', help='Regressor model weights')
     parser.add_argument('--model_select', type=str, default='resnet', help='Regressor model list: resnet, vgg, eff')
     parser.add_argument('--calib_file', type=str, default=ROOT / 'eval/camera_cal/calib_cam_to_cam.txt', help='Calibration file or path')
-    parser.add_argument('--show_result', action='store_true', default=True, help='Show Results with imshow')
-    parser.add_argument('--save_result', action='store_true', default=True, help='Save result')
+    parser.add_argument('--show_result', action='store_true', help='Show Results with imshow')
+    parser.add_argument('--save_result', action='store_true', help='Save result')
     parser.add_argument('--output_path', type=str, default=ROOT / 'output', help='Save output pat')
 
     opt = parser.parse_args()
