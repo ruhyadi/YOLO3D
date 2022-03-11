@@ -20,5 +20,5 @@ jobs:
       - name: build the image
         run: |
           docker buildx build --push \
-            --tag ruhyadi/pytorch:v1.8.1-cu101 \
+            --tag ruhyadi/yolo3d:latest \
             --platform linux/amd64 .

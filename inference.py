@@ -39,7 +39,7 @@ from script.Model import ResNet, ResNet18, VGG11
 model_factory = {
     'resnet': resnet18(pretrained=True),
     'resnet18': resnet18(pretrained=True),
-    'vgg11': vgg11(pretrained=True)
+    # 'vgg11': vgg11(pretrained=True)
 }
 regressor_factory = {
     'resnet': ResNet,

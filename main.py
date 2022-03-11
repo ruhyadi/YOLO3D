@@ -85,5 +85,5 @@ if __name__ == '__main__':
     except:
         print('Directory already exist!')
     opt = parse_opt()
-    app.run()
+    app.run(debug=True, host='0.0.0.0', port=5020)
     shutil.rmtree('static')
