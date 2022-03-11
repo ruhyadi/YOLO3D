@@ -11,7 +11,6 @@ import glob
 
 import cv2
 import torch
-from zmq import device
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
