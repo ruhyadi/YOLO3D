@@ -6,7 +6,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      libglib2.0-0 libsm6 libxrender1 libxext6 && \
      rm -rf /var/lib/apt/lists/*
 
-RUN mkdir /yolo3d
 WORKDIR /yolo3d
 
 COPY requirements.txt requirements.txt
