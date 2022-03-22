@@ -63,7 +63,7 @@ def detect3d(
     ):
 
     # Directory
-    imgs_path = glob.glob(str(source) + '/*')
+    imgs_path = sorted(glob.glob(str(source) + '/*'))
     calib = str(calib_file)
 
     # load model

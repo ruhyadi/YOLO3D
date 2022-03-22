@@ -32,11 +32,12 @@ def train(
     gpu=1,
     val_split=0.1,
     model_path=ROOT / 'weights/',
+    api_key=''
     ):
 
     # comet ml
     comet_logger = CometLogger(
-        api_key='IFsibHtChMnB2b5FuZzhiMswT',
+        api_key=api_key,
         project_name="YOLO3D"
         )
 
@@ -92,6 +93,7 @@ def parse_opt():
     parser.add_argument('--gpu', type=int, default=0, help='Numbers of GPU, default=1')
     parser.add_argument('--val_split', type=float, default=0.2, help='Validation split percentage')
     parser.add_argument('--model_path', type=str, default=ROOT / 'weights', help='Weights path, for load and save model')
+    parser.add_argument('--api_key', type=str, default='', help='API key for comet.ml')
 
     opt = parser.parse_args()
 

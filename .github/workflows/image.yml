@@ -2,7 +2,7 @@ name: Build Docker YOLO3D
 
 on:
   push:
-    branches: main
+    branches: docker
 
 jobs:
   build:

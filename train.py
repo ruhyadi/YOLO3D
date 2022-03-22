@@ -50,7 +50,8 @@ def train(
     save_epoch=10,
     train_path=ROOT / 'dataset/KITTI/training',
     model_path=ROOT / 'weights/',
-    select_model='resnet18'
+    select_model='resnet18',
+    api_key=''
     ):
 
     # directory
@@ -72,7 +73,7 @@ def train(
     }
 
     # comet ml experiment
-    experiment = Experiment('IFsibHtChMnB2b5FuZzhiMswT', project_name="YOLO3D")
+    experiment = Experiment(api_key, project_name="YOLO3D")
     experiment.log_parameters(hyper_params)
 
     # data generator
@@ -183,6 +184,7 @@ def parse_opt():
     parser.add_argument('--train_path', type=str, default=ROOT / 'dataset/KITTI/training', help='Training path KITTI')
     parser.add_argument('--model_path', type=str, default=ROOT / 'weights', help='Weights path, for load and save model')
     parser.add_argument('--select_model', type=str, default='resnet18', help='Model selection: {resnet18, vgg11}')
+    parser.add_argument('--api_key', type=str, default='', help='API key for comet.ml')
 
     opt = parser.parse_args()
 
