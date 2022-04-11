@@ -1,25 +1,31 @@
-# pip install -r requirements.txt
+# --------- pytorch --------- #
+torch>=1.10.0
+torchvision>=0.11.0
+pytorch-lightning>=1.5.10
+torchmetrics>=0.7.0
 
-# Base ----------------------------------------
-pytorch-lightning
-matplotlib>=3.2.2
-numpy>=1.18.5
-opencv-python>=4.1.2
-Pillow>=7.1.2
-PyYAML>=5.3.1
-requests>=2.23.0
-scipy>=1.4.1
-tqdm>=4.41.0
-gdown
-flask
-Werkzeug
+# --------- hydra --------- #
+hydra-core>=1.1.0
+hydra-colorlog>=1.1.0
+hydra-optuna-sweeper>=1.1.0
 
-# Logging -------------------------------------
-tensorboard>=2.4.1
-comet-ml
+# --------- loggers --------- #
+# wandb
+# neptune-client
+# mlflow
+# comet-ml
+# tensorboard
 
-# Plotting ------------------------------------
-pandas>=1.1.4
-seaborn>=0.11.0
+# --------- linters --------- #
+pre-commit      # hooks for applying linters on commit
+black           # code formatting
+isort           # import sorting
+flake8          # code analysis
+nbstripout      # remove output from jupyter notebooks
 
-thop  # FLOPs computation
+# --------- others --------- #
+python-dotenv   # loading env variables from .env file
+rich            # beautiful text formatting in terminal
+pytest          # tests
+sh              # for running bash commands in some tests
+pudb            # debugger
