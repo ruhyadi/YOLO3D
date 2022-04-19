@@ -1,7 +1,8 @@
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
 
 # Start FROM Nvidia PyTorch image https://ngc.nvidia.com/catalog/containers/nvidia:pytorch
-FROM nvcr.io/nvidia/pytorch:21.10-py3
+FROM nvidia/cuda:10.2-base
+FROM python:3.8.13
 
 # Install linux packages
 RUN apt update && apt install -y zip htop screen libgl1-mesa-glx
@@ -11,7 +12,7 @@ COPY requirements.txt .
 RUN python -m pip install --upgrade pip
 RUN pip uninstall -y torch torchvision torchtext
 RUN pip install --no-cache -r requirements.txt albumentations wandb gsutil notebook \
-    torch==1.11.0+cu113 torchvision==0.12.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
+    torch==1.9.0 torchvision==0.10.0 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 # RUN pip install --no-cache -U torch torchvision
 
 # Create working directory
@@ -20,7 +21,7 @@ WORKDIR /usr/src/app
 
 # Copy contents
 COPY . /usr/src/app
-RUN git clone https://github.com/ultralytics/yolov5 /usr/src/yolov5
+RUN git clone https://github.com/ruhyadi/yolo3d /usr/src/yolov5
 
 # Downloads to user config dir
 ADD https://ultralytics.com/assets/Arial.ttf /root/.config/Ultralytics/
