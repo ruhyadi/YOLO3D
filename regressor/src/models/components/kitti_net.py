@@ -3,6 +3,7 @@ KITTI Regressor Model
 """
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 class RegressorNet(nn.Module):
     def __init__(
@@ -49,6 +50,20 @@ class RegressorNet(nn.Module):
             nn.Dropout(),
             nn.Linear(512, 3) # x, y, z
         )
+
+    def forward(self, x):
+        x = self.model(x)
+        x = x.view(-1, self.in_features)
+
+        orientation = self.orientation(x)
+        orientation = orientation.view(-1, self.bins, 2)
+        orientation = F.normalize(orientation, dim=2)
+        
+        confidence = self.confidence(x)
+
+        dimension = self.dimension(x)
+
+        return orientation, confidence, dimension
 
 def OrientationLoss(orient_batch, orientGT_batch, confGT_batch):
     """
@@ -97,4 +112,4 @@ if __name__ == '__main__':
     backbone = resnet18(pretrained=False)
     model = RegressorNet(backbone, 2)
 
-    print(model)
+    print(backbone)

@@ -1,0 +1,6 @@
+_target_: src.datamodules.components.kitti_dataset
+
+dataset_path: ${data_dir}
+dataset_sets: ${data_dir}/trainval.txt
+bins: 2
+overlap: 0.1

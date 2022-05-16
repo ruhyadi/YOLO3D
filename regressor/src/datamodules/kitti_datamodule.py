@@ -15,7 +15,6 @@ class KITTIDataModule(LightningDataModule):
         train_sets: str = '/data/KITTI/training/train.txt',
         val_sets: str = '/data/KITTI/training/val.txt',
         batch_size: int = 32,
-        
         ):
         super().__init__()
 

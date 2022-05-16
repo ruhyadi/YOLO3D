@@ -3,8 +3,8 @@
 # specify here default training configuration
 defaults:
   - _self_
-  - datamodule: mnist.yaml
-  - model: mnist.yaml
+  - datamodule: kitti_datamodule.yaml
+  - model: kitti_module.yaml
   - callbacks: default.yaml
   - logger: null # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: default.yaml
@@ -34,7 +34,7 @@ defaults:
 original_work_dir: ${hydra:runtime.cwd}
 
 # path to folder with data
-data_dir: ${original_work_dir}/data/
+data_dir: ${original_work_dir}/data/KITTI/training
 
 # pretty print config at the start of the run using Rich library
 print_config: True
