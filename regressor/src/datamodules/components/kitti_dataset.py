@@ -14,7 +14,8 @@ from src.utils.classaverages import ClassAverages
 class KITTIDataset(Dataset):
     def __init__(
         self,
-        dataset_path,
+        dataset_path: str = './data/KITTI/training',
+        dataset_sets: str = './data/KITTI/training/train.txt', # [train.txt, val.txt]
         bins: int = 2,
         overlap: float = 0.1,
     ):
@@ -25,14 +26,17 @@ class KITTIDataset(Dataset):
         self.image_path = dataset_path / "images"  # image_2
         self.label_path = dataset_path / "label_2"
         self.calib_path = dataset_path / "calib"
-        # TODO: make kitti global calibration
         self.global_calib = dataset_path / "calib_kitti.txt"
+        self.dataset_sets = Path(dataset_sets)
 
         # set projection matrix
         self.proj_matrix = calib.get_P(self.global_calib)
 
         # index from images_path
-        self.ids = [x.split(".")[0] for x in sorted(os.listdir(self.image_path))]
+        self.sets = open(self.dataset_sets, 'r')
+        self.ids = [id.split('\n')[0] for id in self.sets.readlines()]
+        # self.ids = [x.split(".")[0] for x in sorted(os.listdir(self.image_path))]
+        
         self.num_images = len(self.ids)
 
         # set ANGLE BINS
@@ -95,6 +99,11 @@ class KITTIDataset(Dataset):
 
     def __len__(self):
         return len(self.object_list)
+
+    # def generate_sets(self, sets_file):
+    #     with open(self.dataset_sets) as file:
+    #         for line_num, line in enumerate(file):
+    #             ids = line
 
     def generate_bins(self, bins):
         angle_bins = np.zeros(bins)
@@ -255,8 +264,12 @@ if __name__ == "__main__":
     # testing
     ROOT = Path("/raid/didir/Repository/yolo3d")
     dataset_path = ROOT / "data/KITTI/training"
+    dataset_sets = ROOT / "data/KITTI/training/train.txt"
 
-    dataset = KITTIDataset(dataset_path=dataset_path)
+    dataset = KITTIDataset(
+        dataset_path=dataset_path,
+        dataset_sets=dataset_sets
+        )
     dataset_loader = DataLoader(dataset, batch_size=1)
 
     for img, label in dataset_loader:
