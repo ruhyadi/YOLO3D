@@ -4,4 +4,3 @@ dataset_path: ${data_dir} # data_dir is specified in config.yaml
 train_sets: ${data_dir}/train.txt
 val_sets: ${data_dir}/val.txt
 batch_size: 64
-

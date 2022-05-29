@@ -34,7 +34,7 @@ defaults:
 original_work_dir: ${hydra:runtime.cwd}
 
 # path to folder with data
-data_dir: ${original_work_dir}/data/KITTI/training
+data_dir: /raid/didir/Repository/yolo3d/data/KITTI/training
 
 # pretty print config at the start of the run using Rich library
 print_config: True
@@ -54,4 +54,4 @@ seed: null
 
 # default name for the experiment, determines logging folder path
 # (you can overwrite this name in experiment configs)
-name: "default"
+name: "regressor"

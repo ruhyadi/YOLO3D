@@ -261,3 +261,6 @@ fabric.properties
 /data/KITTI
 outputs/
 actions-runner
+logs/
+
+hydra-basic/

@@ -14,8 +14,8 @@ from src.utils.classaverages import ClassAverages
 class KITTIDataset(Dataset):
     def __init__(
         self,
-        dataset_path: str = './data/KITTI/training',
-        dataset_sets: str = './data/KITTI/training/train.txt', # [train.txt, val.txt]
+        dataset_path: str = '../data/KITTI/training',
+        dataset_sets: str = '../data/KITTI/training/train.txt', # [train.txt, val.txt]
         bins: int = 2,
         overlap: float = 0.1,
     ):
