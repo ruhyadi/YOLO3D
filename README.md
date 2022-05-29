@@ -1,4 +1,7 @@
-# YOLO For 3D Object Detectiond
+# YOLO For 3D Object Detection
+
+#### Note
+I have created a new repository of improvements of YOLO3D wrapped in pytorch lightning and more various object detector backbones, currently on development. Please check [ruhyadi/yolo3d-lightning](https://github.com/ruhyadi/yolo3d-lightning).
 
 Unofficial implementation of [Mousavian et al](https://arxiv.org/abs/1612.00496) in their paper *3D Bounding Box Estimation Using Deep Learning and Geometry*. YOLO3D uses a different approach, as the detector uses YOLOv5 which previously used Faster-RCNN, and Regressor uses ResNet18/VGG11 which was previously VGG19.
 
