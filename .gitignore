@@ -259,3 +259,5 @@ fabric.properties
 /old
 /notebook.ipynb
 /data/KITTI
+outputs/
+actions-runner

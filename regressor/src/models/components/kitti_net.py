@@ -4,11 +4,12 @@ KITTI Regressor Model
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torchvision import models
 
 class RegressorNet(nn.Module):
     def __init__(
         self,
-        backbone: nn.Module,
+        backbone: str,
         bins: int,
     ):
         super().__init__()
@@ -81,24 +82,26 @@ def OrientationLoss(orient_batch, orientGT_batch, confGT_batch):
 
     return -1 * torch.cos(theta_diff - estimated_theta_diff).mean()
 
-def get_model(backbone: nn.Module):
+def get_model(backbone: str):
     """
     Get truncated model and in_features
     """
 
     # list of support model name
     # TODO: add more models 
-    list_model = ['resnet', 'vgg']
-    model_name = str(backbone.__class__.__name__).lower()
-    assert model_name in list_model, f"Model not support, please choose {list_model}"
+    list_model = ['resnet18', 'vgg11']
+    # model_name = str(backbone.__class__.__name__).lower()
+    assert backbone in list_model, f"Model not support, please choose {list_model}"
 
     # TODO: change if else with attributes
     in_features = None
     model = None
-    if model_name == 'resnet':
+    if backbone == 'resnet18':
+        backbone = models.resnet18(pretrained=True)
         in_features = backbone.fc.in_features
         model = nn.Sequential(*(list(backbone.children())[:-2]))
-    elif model_name == 'vgg':
+    elif backbone == 'vgg11':
+        backbone = models.vgg11(pretrained=True)
         in_features = backbone.classifier[0].in_features
         model = backbone.features
 

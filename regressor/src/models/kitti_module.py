@@ -6,13 +6,12 @@ from torch import nn
 from pytorch_lightning import LightningModule
 
 from src.models.components.kitti_net import (RegressorNet, 
-                                            OrientationLoss,
-                                            get_in_features)
+                                            OrientationLoss)
 
 class KITTIModule(LightningModule):
     def __init__(
         self,
-        backbone: torch.nn.Module,
+        backbone: str,
         lr: float = 0.001,
         momentum: float = 0.9,
         bins: int = 2,
@@ -78,20 +77,8 @@ class KITTIModule(LightningModule):
         return {'loss': loss}
 
 
-
 if __name__ == '__main__':
-    
-    from torchvision import models
 
-    ResNet = models.resnet18(pretrained=True)
-    VGGNet = models.vgg11(pretrained=True)
+    model = KITTIModule(backbone='resnet18')
 
-    # resnet_in_features = ResNet.fc.in_features
-    # vgg_in_features = VGGNet.classifier[0].in_features
-
-    # print(f'ResNet in features: {resnet_in_features}')
-    # print(f'VGG in features: {vgg_in_features}')
-    # print(ResNet)
-
-    in_features = get_in_features(VGGNet)
-    print(in_features)
+    print(model)
