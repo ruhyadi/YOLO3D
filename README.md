@@ -49,10 +49,10 @@ For inference with pretrained model you can run code below. It can be run in con
 python inference.py \
     --weights yolov5s.pt \
     --source eval/image_2 \
-    --reg_weights weights/resnet_10.pkl \
-    --model_list resnet \
+    --reg_weights weights/resnet18.pkl \
+    --model_select resnet18 \
     --output_path runs/ \
-    --show_result -- save_result
+    --show_result --save_result
 ```
 Inference can be run on Colab Notebook, please visit [this link](https://colab.research.google.com/drive/1vhgGRRDqHEqsrqZXBjBJHDFWJk9Pw0qZ?usp=sharing).
 
