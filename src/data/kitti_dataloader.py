@@ -1,14 +1,19 @@
-"""KITTI pytorch dataloader module."""
+"""
+KITTI data loader for MultiBin model inherited from pytorch dataset.
+"""
 
 import rootutils
 
 ROOT = rootutils.autosetup()
 
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
+import torch
+from PIL import Image
 from torch.utils.data import Dataset
+from torchvision.transforms import transforms
 from tqdm import tqdm
 
 from src.schema.kitti_schema import (
@@ -16,17 +21,20 @@ from src.schema.kitti_schema import (
     KittiLabelSchema,
     MultibinLabelSchema,
 )
+from src.utils.logger import get_logger
+
+log = get_logger()
 
 
-class KittiDataLoader(Dataset):
+class KittiDataloader(Dataset):
     """
     KITTI dataoader for MultiBin model inherited from pytorch dataset.
     """
 
     def __init__(
         self,
-        images_dir: str = "data/kitti/images",
-        labels_dir: str = "data/kitti/labels",
+        images_dir: str = "data/kitti/image_2",
+        labels_dir: str = "data/kitti/label_2",
         calib_path: str = "assets/kitti_calib.txt",
         sets_path: str = "assets/kitti_train.txt",
         classes: List[str] = ["Car", "Pedestrian", "Cyclist"],
@@ -48,25 +56,46 @@ class KittiDataLoader(Dataset):
         self.dim_avg.load(self.labels_dir, self.sets_path)
         self.dim_avg.generate_json(path="assets/kitti_dimensions.json")
 
+        # image transforms
+        self.transforms = transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+            ]
+        )
+
+        # setup labels
+        self.multibins = self.setup()
+
     def __len__(self) -> int:
         """Return the length of the dataset."""
 
-        return 0
+        return len(self.multibins)
 
-    def __getitem__(self, index: int):
+    def __getitem__(
+        self, index: int
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Return a sample from the dataset."""
+        multibin = self.multibins[index]
+        image = self.get_image(index=multibin.index, box=multibin.box)
 
-        return None
+        # convert labels to tensor
+        ori = torch.tensor(multibin.orientation, dtype=torch.float32)
+        conf = torch.tensor(multibin.confidence, dtype=torch.float32)
+        dims = torch.tensor(multibin.dimensions, dtype=torch.float32)
+
+        return image, ori, conf, dims
 
     def setup(self) -> List[MultibinLabelSchema]:
         """Setup KITTI dataset for MultiBin model."""
+        log.info(f"Loading KITTI dataset from {self.labels_dir}...")
 
         # get indexes from kitti set file (train.txt, val.txt, test.txt)
         indexes = self.sets_path.read_text().splitlines()
 
         # iterate over indexes
         multibins: List[MultibinLabelSchema] = []
-        for i in tqdm(indexes, desc="Processing data"):
+        for i in tqdm(indexes, desc="KITTI to MultiBin Format"):
             label_path = self.labels_dir / f"{i}.txt"
             lines = label_path.read_text().splitlines()
             for line in lines:
@@ -82,6 +111,14 @@ class KittiDataLoader(Dataset):
                 multibins.append(multibin)
 
         return multibins
+
+    def get_image(self, index: str, box: List[int]) -> torch.Tensor:
+        """Get image of object (crop) from image directory."""
+        img_path = self.images_dir / f"{index}.png"
+        image = Image.open(img_path)
+        image = image.crop(box=box)
+
+        return self.transforms(image)
 
     def get_alpha(self, alpha: float) -> float:
         """
@@ -101,7 +138,8 @@ class KittiDataLoader(Dataset):
         """Convert kitti format to MultiBin format."""
         # get new alpha and dimensions
         alpha = self.get_alpha(alpha=kitti.alpha)
-        dims = kitti.dimensions - self.dim_avg[kitti.type]
+        dims = np.array(kitti.dimensions) - np.array(self.dim_avg[kitti.type])
+        dims = dims.tolist()
 
         # compute orientation and confidence bin
         ori, conf = self.compute_ori_conf(alpha=alpha)
@@ -109,7 +147,7 @@ class KittiDataLoader(Dataset):
         return MultibinLabelSchema(
             index=index,
             category=kitti.type,
-            bbox=kitti.bbox,
+            box=kitti.bbox,
             alpha=alpha,
             dimensions=dims,
             orientation=ori,

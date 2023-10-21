@@ -17,7 +17,7 @@ class MultibinLabelSchema(BaseModel):
 
     index: str = Field(..., example="042069")
     category: str = Field(..., example="Car")
-    bbox: List[int] = Field(..., example=[0, 0, 100, 100])
+    box: List[int] = Field(..., example=[0, 0, 100, 100])
     alpha: float = Field(..., example=1.5)
     dimensions: List[float] = Field(..., example=[1.2, 1.5, 1.2])
     orientation: List[List[float]] = Field(..., example=[[0.19, 0.98], [-0.19, -0.98]])
@@ -47,9 +47,9 @@ class KittiLabelSchema(BaseModel):
         example=1.00,
         description="Observation angle of object, ranging [-pi..pi]",
     )
-    bbox: Optional[List[float]] = Field(
+    bbox: Optional[List[int]] = Field(
         None,
-        example=[50.00, 25.00, 25.00, 50.00],
+        example=[50, 25, 25, 50],
         description="2D bounding box of object in the image (0-based index): contains left, top, right, bottom pixel coordinates",
     )
     dimensions: Optional[List[float]] = Field(
@@ -122,6 +122,11 @@ class KittiDimensionsAvgSchema(BaseModel):
 
         return self.__dict__[str(category).lower()]
 
+    def compute_dimensions(self, category: str, dims: List[float]) -> List[float]:
+        """Compute kitti dimension average of category."""
+
+        return dims - self.__getitem__(category)
+
     def load(self, labels_path: Union[str, Path], sets_path: Union[str, Path]) -> None:
         """Load kitti dimension average from labels file."""
         if isinstance(labels_path, str):
@@ -142,13 +147,13 @@ class KittiDimensionsAvgSchema(BaseModel):
                 dimension = [float(line[8]), float(line[9]), float(line[10])]
                 self.__dict__[category].append(dimension)
 
-    def generate_json(self, path: str) -> None:
-        """Generate kitti dimension average json file."""
+        # average kitti dimension
         for key, value in self.__dict__.items():
             if not value:
                 continue
             self.__dict__[key] = np.mean(value, axis=0).tolist()
 
-        # save kitti dimension average json file
+    def generate_json(self, path: str) -> None:
+        """Generate kitti dimension average json file."""
         with open(path, "w") as f:
             json.dump(self.model_dump(), f, indent=4)
