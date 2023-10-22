@@ -24,4 +24,4 @@ scheduler:
 
 omega: 0.4 # weight of the orientation loss
 alpha: 0.6 # weight of the dimension loss
-compile: true # compile the model
+compile: false # compile the model

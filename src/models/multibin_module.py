@@ -91,9 +91,9 @@ class MultibinModule(LightningModule):
                 "train/conf_loss": loss["conf_loss"],
                 "train/dim_loss": loss["dim_loss"],
             },
-            on_step=True,
+            on_step=False,
             on_epoch=True,
-            prog_bar=False,
+            prog_bar=True,
         )
 
         return {"loss": loss["loss"], "preds": preds, "targets": targets}
