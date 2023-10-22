@@ -1,0 +1,27 @@
+# Multibin model configs
+
+_target_: src.models.multibin_module.MultibinModule
+
+net:
+  _target_: src.models.multibin_base.MultibinBase # base model
+  backbone:
+    _target_: torchvision.models.mobilenet_v3_small # backbone model from torchvision
+    pretrained: True # use pretrained weights
+  n_bins: 2 # number of bins
+
+optimizer:
+  _target_: torch.optim.Adam # optimizer
+  _partial_: true # use partial initialization
+  lr: 0.001 # learning rate
+  weight_decay: 0.0 # weight decay
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau # scheduler
+  _partial_: true # use partial initialization
+  mode: min # mode of the scheduler
+  factor: 0.1 # factor of the scheduler
+  patience: 5 # patience of the scheduler
+
+omega: 0.4 # weight of the orientation loss
+alpha: 0.6 # weight of the dimension loss
+compile: true # compile the model

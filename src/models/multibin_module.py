@@ -6,7 +6,7 @@ import rootutils
 
 ROOT = rootutils.autosetup()
 
-from typing import List
+from typing import Any, List
 
 import torch
 from lightning import LightningModule
@@ -19,25 +19,31 @@ class MultibinModule(LightningModule):
 
     def __init__(
         self,
-        base: nn.Module,
+        net: nn.Module,
         optimizer: Optimizer,
         scheduler: lr_scheduler = None,
         omega: float = 0.4,
         alpha: float = 0.6,
+        compile: bool = True,
     ) -> None:
         """Initialize multibin regressor lightning module."""
         super().__init__()
-        self.save_hyperparameters(logger=False, ignore="base")
-        self.base = base
+        self.save_hyperparameters(logger=False, ignore="net")
+        self.net = net
 
         # loss functions
         self.ori_lf = orientation_loss
         self.conf_lf = nn.CrossEntropyLoss()
         self.dim_lf = nn.MSELoss()
 
+    def setup(self, stage: str) -> None:
+        """Setup the model with Lightning hook."""
+        if self.hparams.compile and stage == "fit":
+            self.net = torch.compile(self.net)
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Perform a forward pass through the model `self.base`."""
-        return self.base(x)
+        """Perform a forward pass through the model `self.net`."""
+        return self.net(x)
 
     def step(self, batch: torch.Tensor) -> List:
         """Forward pass through the model and compute the loss."""
@@ -85,7 +91,7 @@ class MultibinModule(LightningModule):
                 "train/conf_loss": loss["conf_loss"],
                 "train/dim_loss": loss["dim_loss"],
             },
-            on_step=False,
+            on_step=True,
             on_epoch=True,
             prog_bar=False,
         )
@@ -107,22 +113,10 @@ class MultibinModule(LightningModule):
             },
             on_step=False,
             on_epoch=True,
-            prog_bar=False,
+            prog_bar=True,
         )
 
         return {"loss": loss["loss"], "preds": preds, "targets": targets}
-
-    def on_validation_epoch_end(self, outputs: dict) -> dict:
-        """Validation epoch end."""
-        # get average loss
-        avg_val_loss = torch.stack([x["loss"] for x in outputs]).mean()
-
-        # log the loss
-        self.log(
-            "val/avg_loss", avg_val_loss, on_step=False, on_epoch=True, prog_bar=True
-        )
-
-        return {"loss": avg_val_loss}
 
     def configure_optimizers(self) -> Optimizer:
         """Configure training optimizer and scheduler."""

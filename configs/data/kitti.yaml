@@ -1,0 +1,27 @@
+# KITTI datamodule configs
+
+_target_: src.data.kitti_datamodule.KittiDatamodule # datamodule target
+images_dir: data/kitti/image_2 # images directory
+labels_dir: data/kitti/label_2 # labels directory
+calib_path: assets/kitti_calib.txt # calibration directory
+train_sets_path: assets/kitti_train.txt # train sets directory
+val_sets_path: assets/kitti_val.txt # validation sets directory
+classes: # classes
+  - Car
+  - Pedestrian
+  - Cyclist
+n_bins: 2 # number of bins
+overlap: 0.5 # overlap threshold
+batch_size: 32 # batch size
+num_workers: 4 # number of workers
+
+# kitti classes
+#   - Car
+#   - Van
+#   - Truck
+#   - Pedestrian
+#   - Person_sitting
+#   - Cyclist
+#   - Tram
+#   - Misc
+#   - DontCare

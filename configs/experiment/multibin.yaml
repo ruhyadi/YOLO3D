@@ -1,0 +1,19 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=multibin
+
+defaults:
+  - override /data: kitti
+  - override /model: multibin
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["mobilenetv3"]
+
+seed: 42069
+
+trainer:
+  min_epochs: 10
+  max_epochs: 20
