@@ -150,11 +150,11 @@ class KittiDataloader(Dataset):
             box=kitti.bbox,
             alpha=alpha,
             dimensions=dims,
-            orientation=ori,
-            confidence=conf,
+            orientation=ori.tolist(),
+            confidence=conf.tolist(),
         )
 
-    def compute_ori_conf(self, alpha: float):
+    def compute_ori_conf(self, alpha: float) -> Tuple[np.ndarray, np.ndarray]:
         """Compute orientation and confidence bin."""
         ori = np.zeros((self.n_bins, 2))
         conf = np.zeros(self.n_bins)

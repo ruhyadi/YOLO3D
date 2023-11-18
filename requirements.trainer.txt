@@ -1,24 +1,19 @@
-# --------- pytorch --------- #
-torch>=2.0.0
-torchvision>=0.15.0
-lightning>=2.0.0
-torchmetrics>=0.11.4
+# usage: pip install -r requirements.trainer.txt
+# uncomment the torch and torchvision if using conda
 
-# --------- hydra --------- #
-hydra-core==1.3.2
-hydra-colorlog==1.2.0
-hydra-optuna-sweeper==1.2.0
+# configs & logs
+hydra-core==1.3.2 # config management
+hydra-colorlog==1.2.0 # color logs
+hydra-optuna-sweeper==1.2.0 # optuna sweeper
+rootutils==1.0.7 # standardizing the project root setup
 
-# --------- loggers --------- #
-# wandb
-# neptune-client
-# mlflow
-# comet-ml
-# aim>=3.16.2  # no lower than 3.16.2, see https://github.com/aimhubio/aim/issues/2550
+# deep learning framework
+# torch==2.0.0 
+# torchvision==0.15.0
+lightning==2.0.3 # pytorch lightning framework
+torchmetrics==0.11.4 # pytorch metrics library
 
-# --------- others --------- #
-rootutils       # standardizing the project root setup
-pre-commit      # hooks for applying linters on commit
-rich            # beautiful text formatting in terminal
-pytest          # tests
-# sh            # for running bash commands in some tests (linux/macos only)
+# extras
+pre-commit # hooks for applying linters on commit
+rich # beautiful text formatting in terminal
+pytest # tests

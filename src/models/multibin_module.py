@@ -24,7 +24,7 @@ class MultibinModule(LightningModule):
         scheduler: lr_scheduler = None,
         omega: float = 0.4,
         alpha: float = 0.6,
-        compile: bool = True,
+        compile: bool = False,
     ) -> None:
         """Initialize multibin regressor lightning module."""
         super().__init__()

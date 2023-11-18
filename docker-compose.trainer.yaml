@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+  yolo3d-trainer:
+    container_name: yolo3d-trainer
+    image: ruhyadi/yolo3d-trainer:latest
+    tty: true
+    volumes:
+      - ./:/home/didi/yolo3d
+      - /etc/localtime:/etc/localtime:ro
+    user: 1000:1000
+    command: bash
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    shm_size: 4g

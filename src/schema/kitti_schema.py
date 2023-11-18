@@ -142,7 +142,7 @@ class KittiDimensionsAvgSchema(BaseModel):
             for line in lines:
                 line = line.split()
                 category = str(line[0]).lower()
-                if not category in self.model_fields:
+                if category not in self.__dict__.keys():
                     continue
                 dimension = [float(line[8]), float(line[9]), float(line[10])]
                 self.__dict__[category].append(dimension)
@@ -156,4 +156,4 @@ class KittiDimensionsAvgSchema(BaseModel):
     def generate_json(self, path: str) -> None:
         """Generate kitti dimension average json file."""
         with open(path, "w") as f:
-            json.dump(self.model_dump(), f, indent=4)
+            json.dump(self.__dict__, f, indent=4)
