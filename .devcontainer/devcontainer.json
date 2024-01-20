@@ -1,0 +1,34 @@
+{
+    "name": "yolo3d-devel",
+    "privileged": true,
+    "remoteUser": "didi",
+    "build": {
+        "dockerfile": "../dockerfile.devel",
+        "args": { "USERNAME": "didi" }
+    },
+    "workspaceFolder": "/home/didi/yolo3d",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/home/didi/yolo3d,type=bind",
+    "runArgs": [
+        "--gpus=all", 
+        "--shm-size=4g",
+        "--network=host"
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.black-formatter",
+                "GitHub.copilot",
+                "GitHub.copilot-chat",
+                "github.vscode-github-actions",
+                "eamodio.gitlens",
+                "VisualStudioExptTeam.vscodeintellicode",
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "redhat.vscode-yaml",
+                "yzhang.markdown-all-in-one",
+                "ms-python.isort",
+                "ms-azuretools.vscode-docker"
+            ]
+        }
+    }
+}
