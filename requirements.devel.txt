@@ -8,10 +8,10 @@ hydra-optuna-sweeper==1.2.0 # optuna sweeper
 rootutils==1.0.7 # standardizing the project root setup
 
 # deep learning framework
-# torch==2.0.0 
-# torchvision==0.15.0
-lightning==2.0.3 # pytorch lightning framework
-torchmetrics==0.11.4 # pytorch metrics library
+# torch==2.0.0 # pytorch
+# torchvision==0.15.0 # pytorch vision
+lightning==2.0.* # pytorch lightning framework
+torchmetrics==1.3.* # pytorch metrics library
 
 # extras
 pre-commit # hooks for applying linters on commit

@@ -16,18 +16,14 @@
     "customizations": {
         "vscode": {
             "extensions": [
-                "ms-python.black-formatter",
-                "GitHub.copilot",
-                "GitHub.copilot-chat",
-                "github.vscode-github-actions",
-                "eamodio.gitlens",
-                "VisualStudioExptTeam.vscodeintellicode",
                 "ms-python.python",
                 "ms-python.vscode-pylance",
-                "redhat.vscode-yaml",
-                "yzhang.markdown-all-in-one",
+                "ms-python.black-formatter",
                 "ms-python.isort",
-                "ms-azuretools.vscode-docker"
+                "eamodio.gitlens",
+                "VisualStudioExptTeam.vscodeintellicode",
+                "redhat.vscode-yaml",
+                "yzhang.markdown-all-in-one"
             ]
         }
     }

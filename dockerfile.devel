@@ -1,5 +1,5 @@
 # usage: docker build -f dockerfile.devel -t ruhyadi/yolo3d-devel:latest .
-FROM nvcr.io/nvidia/pytorch:23.03-py3
+FROM nvcr.io/nvidia/pytorch:23.05-py3
 
 ARG USERNAME=didi
 ARG USER_UID=1000
