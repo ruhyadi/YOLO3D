@@ -24,17 +24,11 @@ class Plot3DBox:
     def __init__(
         self,
         proj_matrix: np.ndarray,
-        classes: List[str] = ["Car", "Pedestrian", "Cyclist"],
+        categories: List[str] = ["Car", "Pedestrian", "Cyclist"],
     ) -> None:
-        """
-        Initialize 3D bounding box plotting module.
-
-        Args:
-            proj_matrix (np.ndarray): projection matrix P2
-            classes (list, optional): list of classes
-        """
+        """Initialize 3D bounding box plotting module."""
         self.proj_matrix = proj_matrix
-        self.classes = [c.lower() for c in classes]
+        self.categories = [c.lower() for c in categories]
 
         self.fig = plt.figure(figsize=(20, 5.12))
         gs = GridSpec(1, 4)
@@ -45,7 +39,7 @@ class Plot3DBox:
         self.shape = 900
         self.scale = 15
 
-        self.color = {
+        self.colors = {
             "car": "red",
             "pedestrian": "blue",
             "cyclist": "green",
@@ -157,7 +151,7 @@ class Plot3DBox:
         codes[0] = Path.MOVETO
         path = Path(vertices, codes)
         patch = patches.PathPatch(
-            path, fill=False, color=self.color[category], linewidth=2
+            path, fill=False, color=self.colors[category], linewidth=2
         )
 
         # fill front box
@@ -167,7 +161,7 @@ class Plot3DBox:
             (corners_2d[:, 1]),
             width,
             height,
-            color=self.color[category],
+            color=self.colors[category],
             fill=True,
             alpha=0.4,
         )
@@ -184,7 +178,7 @@ class Plot3DBox:
             label,
             fontsize=8,
             color="white",
-            bbox=dict(facecolor=self.color[category], alpha=0.4, pad=0.5),
+            bbox=dict(facecolor=self.colors[category], alpha=0.4, pad=0.5),
         )
 
         # draw 3D bounding box corners
