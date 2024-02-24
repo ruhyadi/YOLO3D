@@ -4,7 +4,6 @@ import rootutils
 
 ROOT = rootutils.autosetup()
 
-from pathlib import Path
 from typing import List, Union
 
 import onnxruntime as ort
@@ -20,26 +19,17 @@ class CommonOnnxEngine:
 
     def __init__(self, engine_path: str, provider: str = "cpu") -> None:
         """Initialize ONNX runtime common engine."""
-        self.engine_path = Path(engine_path)
+        self.engine_path = engine_path
         self.provider = provider
-        self.decrypt_key = None
         self.provider = self.check_providers(provider)
 
     def setup(self) -> None:
         """Setup ONNX runtime engine."""
-        log.info(f"Setup YOLO3D ONNX engine...")
-        if self.decrypt_key:
-            with open(str(self.engine_path), "rb") as f:
-                engine_data = f.read()
-            self.engine = ort.InferenceSession(engine_data, providers=self.provider)
-        else:
-            self.engine = ort.InferenceSession(
-                str(self.engine_path), providers=self.provider
-            )
+        with open(self.engine_path, "rb") as f:
+            engine_bytes = f.read()
+        self.engine = ort.InferenceSession(engine_bytes, providers=self.provider)
         self.metadata = self.get_metadata()
         self.img_shape = self.metadata[0].input_shape[2:]
-
-        log.info(f"YOLO3D ONNX is ready!")
 
     def get_metadata(self) -> List[OnnxMetadataSchema]:
         """Get model metadata."""
