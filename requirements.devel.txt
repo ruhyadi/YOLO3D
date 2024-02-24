@@ -12,6 +12,7 @@ rootutils==1.0.7 # standardizing the project root setup
 # torchvision==0.15.0 # pytorch vision
 lightning==2.0.* # pytorch lightning framework
 torchmetrics==1.3.* # pytorch metrics library
+onnxruntime==1.17.* # onnxruntime
 
 # extras
 pre-commit # hooks for applying linters on commit
