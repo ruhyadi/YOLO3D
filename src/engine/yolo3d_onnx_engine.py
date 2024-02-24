@@ -1,15 +1,17 @@
-"""Demo scripts."""
+"""YOLO3D onnx engine."""
 
 import rootutils
 
 ROOT = rootutils.autosetup()
 
 import json
-from pathlib import Path
 from typing import Dict, List
+
+import numpy as np
 
 from src.engine.multibin_onnx_engine import MultibinOnnxEngine
 from src.engine.yolo_onnx_engine import YoloOnnxEngine
+from src.schema.yolo_schema import YoloResultSchema
 from src.utils.calib_utils import load_matrix_p2
 from src.utils.logger import get_logger
 from src.utils.plot_utils import Plot3DBox
@@ -17,8 +19,8 @@ from src.utils.plot_utils import Plot3DBox
 log = get_logger()
 
 
-class Demo:
-    """Demo yolo3d."""
+class Yolo3dOnnxEngine:
+    """YOLO3D onnx engine."""
 
     def __init__(
         self,
@@ -28,11 +30,9 @@ class Demo:
         yolo_arch: str,
         yolo_max_det_end2end: int,
         multibin_engine_path: str,
-        categories: List[str] = ["car", "pedestrian", "cyclist"],
+        provider: str = "cpu",
         avg_dim_path: str = "assets/kitti_dimensions.json",
         calib_path: str = "assets/kitti_calib.txt",
-        provider: str = "cpu",
-        output_dir: str = "tmp/demo",
     ) -> None:
         """Initialize demo."""
         self.yolo_engine_path = yolo_engine_path
@@ -42,7 +42,6 @@ class Demo:
         self.yolo_max_det_end2end = yolo_max_det_end2end
 
         self.multibin_engine_path = multibin_engine_path
-        self.categories = categories
         self.avg_dim_path = avg_dim_path
         self.calib_path = calib_path
         self.provider = provider
@@ -50,9 +49,6 @@ class Demo:
         self.matrix_p2 = load_matrix_p2(calib_path)
         self.avg_dim = self.load_avg_dim(avg_dim_path)
         self.plotter = Plot3DBox(proj_matrix=self.matrix_p2, categories=self.categories)
-
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def setup(self) -> None:
         """Setup YOLO and multibin engine."""
@@ -73,10 +69,25 @@ class Demo:
 
         log.info(f"YOLO3D ONNX engine is ready!")
 
-    def predict(self, img: np.ndarray) -> None:
+    def predict(self, img: np.ndarray, conf: float = 0.25, nms: float = 0.45) -> None:
         """Predict."""
-        yolo_results = self.yolo_engine.predict(img)
-        multibin_results = self.multibin_engine.predict(img)
+        yolo_results = self.yolo_engine.predict(img, conf, nms)
+        cropped_imgs = self.preprocess_multibin(img, yolo_results)
+        results = self.multibin_engine.predict(imgs=cropped_imgs)
+
+        return results
+
+    def preprocess_multibin(
+        self, img: np.ndarray, yolo_results: List[YoloResultSchema]
+    ) -> List[np.ndarray]:
+        """Preprocess images for multibin engine."""
+        results: List[np.ndarray] = []
+        for box in yolo_results[0].boxes:  # single image
+            x1, y1, x2, y2 = box
+            cropped_img = img[y1:y2, x1:x2]
+            results.append(cropped_img)
+
+        return results
 
     def load_avg_dim(self, json_path: str) -> Dict[str, List[float]]:
         """

@@ -26,9 +26,7 @@ class YoloOnnxEngine(CommonOnnxEngine):
         categories: List[str],
         provider: str = "cpu",
         end2end: bool = False,
-        arch: str = "yolox",
-        pretrained: bool = False,
-        max_det_end2end: int = 100,
+        arch: str = "yolox"
     ) -> None:
         """Initialize YOLO ONNX engine."""
         assert arch in ["yolox"], "Invalid architecture"
@@ -36,8 +34,6 @@ class YoloOnnxEngine(CommonOnnxEngine):
         self.categories = categories
         self.end2end = end2end
         self.arch = arch
-        self.pretrained = pretrained
-        self.max_det_end2end = max_det_end2end
 
         self.normalize = False if self.arch == "yolox" else True
 
