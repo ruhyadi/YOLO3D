@@ -4,12 +4,17 @@
     "remoteUser": "didi",
     "build": {
         "dockerfile": "../dockerfile.devel",
-        "args": { "USERNAME": "didi" }
+        "args": {
+            "USERNAME": "didi"
+        }
     },
     "workspaceFolder": "/home/didi/yolo3d",
     "workspaceMount": "source=${localWorkspaceFolder},target=/home/didi/yolo3d,type=bind",
+    "containerEnv": {
+        "TZ": "Asia/Jakarta"
+    },
     "runArgs": [
-        "--gpus=all", 
+        "--gpus=all",
         "--shm-size=4g",
         "--network=host"
     ],
