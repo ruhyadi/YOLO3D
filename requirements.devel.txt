@@ -7,6 +7,7 @@ hydra-optuna-sweeper==1.2.0 # for optuna hyperparameter optimization
 tqdm==4.* # for progress bars
 rootutils  # standardizing the project root setup
 rich # beautiful text formatting in terminal
+pytest # for testing
 
 # deep learning
 # torch==2.0.1 # pytorch framework

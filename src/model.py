@@ -16,7 +16,7 @@ class MultibinRegressor(nn.Module):
 
     def __init__(
         self,
-        backbone: Literal["resnet18", "mobilenetv3-small"] = "mobilenetv3",
+        backbone: Literal["resnet18", "mobilenetv3-small"] = "mobilenetv3-small",
         n_bins: int = 2,
     ) -> None:
         """Initialize the model."""
@@ -26,6 +26,7 @@ class MultibinRegressor(nn.Module):
         ], f"Backbone {backbone} not supported."
         assert n_bins > 1, "Number of bins must be greater than 1."
         super().__init__()
+        self.n_bins = n_bins
 
         if backbone == "resnet18":
             from torchvision.models import resnet18
@@ -49,7 +50,7 @@ class MultibinRegressor(nn.Module):
             nn.Linear(256, 256),
             nn.ReLU(),
             nn.Dropout(),
-            nn.Linear(256, n_bins * 2),  # 2 for sin and cos
+            nn.Linear(256, self.n_bins * 2),  # 2 for sin and cos
         )
 
         # orientation confidence head
@@ -60,7 +61,7 @@ class MultibinRegressor(nn.Module):
             nn.Linear(256, 256),
             nn.ReLU(),
             nn.Dropout(),
-            nn.Linear(256, n_bins),  # 1 for confidence
+            nn.Linear(256, self.n_bins),  # 1 for confidence
         )
 
         # dimension head
@@ -98,13 +99,13 @@ class MultibinRegressor(nn.Module):
         """Get the number of input features."""
         backbone_name = backbone.__class__.__name__.lower()
         assert backbone_name in [
-            "resnet18",
+            "resnet", # resnet18
             "mobilenetv3",
         ], f"Backbone {backbone_name} not supported."
 
         in_features = {
             "resnet": (lambda: backbone.fc.in_features * 7 * 7),  # 512 * 7 * 7 = 25088
-            "mobilenetv3-small": (
+            "mobilenetv3": (
                 lambda: (backbone.classifier[0].in_features) * 7 * 7
             ),  # 576 * 7 * 7 = 28416
         }
