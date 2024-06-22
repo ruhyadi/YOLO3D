@@ -1,15 +1,16 @@
 """Schema module."""
 
 import rootutils
+from pydantic.main import TupleGenerator
 
 ROOT = rootutils.autosetup()
 
 import json
-
 from pathlib import Path
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
+from tqdm import tqdm
 
 
 class KittiSchema(BaseModel):
@@ -56,7 +57,7 @@ class KittiSchema(BaseModel):
         description="Rotation ry around Y-axis in camera coordinates [-pi..pi]",
     )
     score: float = Field(
-        None,
+        0.0,
         example=0.0,
         description="Only for results: Float, indicating confidence in detection, needed for p/r curves, higher is better",
     )
@@ -85,9 +86,29 @@ class CocoSchema(BaseModel):
     def load_kitti(self, anns_dir: str, categories: List[str]) -> "CocoSchema":
         """Load KITTI annotations."""
         anns_dir = Path(anns_dir)
+        categories = [cat.lower() for cat in categories]
 
-        for ann_path in sorted(anns_dir.glob("*.txt")):
+        # assign category
+        for cat in categories:
+            cat = CocoCategorieSchema(
+                id=len(self.categories) + 1,  # 1-indexed
+                name=cat,
+                supercategory=cat,
+            )
+            self.categories.append(cat)
+
+        for ann_path in tqdm(sorted(anns_dir.glob("*.txt")), desc="Loading KITTI"):
             ann_path: Path = ann_path
+
+            # assign image
+            img = CocoImageSchema(
+                id=len(self.images) + 1,  # 1-indexed
+                width=1242,  # default
+                height=375,  # default
+                file_name=ann_path.stem + ".png",
+            )
+            self.images.append(img)
+
             lines = ann_path.read_text().splitlines()
             for line in lines:
                 kitti = KittiSchema()
@@ -95,29 +116,11 @@ class CocoSchema(BaseModel):
                 if kitti.type not in categories:
                     continue
 
-                # assign category
-                cat = CocoCategorieSchema(
-                    id=categories.index(kitti.type) + 1,  # 1-indexed
-                    name=kitti.type,
-                    supercategory=kitti.type,
-                )
-                if cat not in self.categories:
-                    self.categories.append(cat)
-
-                # assign image
-                img = CocoImageSchema(
-                    id=len(self.images) + 1,  # 1-indexed
-                    width=1242,  # default
-                    height=375,  # default
-                    file_name=ann_path.stem + ".png",
-                )
-                self.images.append(img)
-
                 # assign annotation
                 ann = CocoAnnotationSchema(
                     id=len(self.annotations) + 1,  # 1-indexed
                     image_id=img.id,
-                    category_id=cat.id,
+                    category_id=categories.index(kitti.type) + 1,  # 1-indexed
                     segmentation=[],
                     area=self._xyxy2area(kitti.bbox),
                     bbox=self._xyxy2xywh(kitti.bbox),
@@ -143,13 +146,13 @@ class CocoSchema(BaseModel):
         return [
             bbox[0],
             bbox[1],
-            bbox[2] - bbox[0],
-            bbox[3] - bbox[1],
+            round(bbox[2] - bbox[0], 2),
+            round(bbox[3] - bbox[1], 2),
         ]
 
     def _xyxy2area(self, bbox: List[float]) -> float:
         """Calculate area from xyxy."""
-        return (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+        return round((bbox[2] - bbox[0]) * (bbox[3] - bbox[1]), 2)
 
 
 class CocoCategorieSchema(BaseModel):
