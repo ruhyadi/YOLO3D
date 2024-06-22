@@ -4,7 +4,8 @@
 hydra-core==1.3.2 # for config management
 hydra-colorlog==1.2.0 # for colored logging
 hydra-optuna-sweeper==1.2.0 # for optuna hyperparameter optimization
-tqdm==4.* # for progress bars
+tqdm==4.* # for progress barss
+pydantic==2.* # for data validation
 rootutils  # standardizing the project root setup
 rich # beautiful text formatting in terminal
 pytest # for testing
