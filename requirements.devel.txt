@@ -1,0 +1,24 @@
+# usage: pip install -r requirements.devel.txt
+
+# general
+hydra-core==1.3.2 # for config management
+hydra-colorlog==1.2.0 # for colored logging
+hydra-optuna-sweeper==1.2.0 # for optuna hyperparameter optimization
+tqdm==4.* # for progress bars
+rootutils  # standardizing the project root setup
+rich # beautiful text formatting in terminal
+
+# deep learning
+# torch==2.0.1 # pytorch framework
+# torchvision==0.15.2 # pytorch computer vision library
+torchmetrics==1.3.1 # pytorch metrics library
+
+# image processing
+opencv-python-headless==4.6.* # opencv library
+
+# serve
+onnx==1.15.0 # onnx framework
+onnxruntime==1.17.0 # onnx runtime
+
+# loggers
+tensorboard==2.13.0 # tensorboard logger

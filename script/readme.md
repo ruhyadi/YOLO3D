@@ -1,1 +1,0 @@
-My version Script for training and testing
