@@ -4,6 +4,9 @@ import rootutils
 
 ROOT = rootutils.autosetup()
 
+import json
+
+from pathlib import Path
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
@@ -58,6 +61,19 @@ class KittiSchema(BaseModel):
         description="Only for results: Float, indicating confidence in detection, needed for p/r curves, higher is better",
     )
 
+    def load(self, lines: List[str]) -> None:
+        """Load KITTI annotations."""
+        self.type = lines[0].lower()
+        self.truncated = float(lines[1])
+        self.occluded = int(lines[2])
+        self.alpha = float(lines[3])
+        self.bbox = [float(x) for x in lines[4:8]]
+        self.dimensions = [float(x) for x in lines[8:11]]
+        self.location = [float(x) for x in lines[11:14]]
+        self.rotation_y = float(lines[14])
+        if len(lines) > 15:
+            self.score = float(lines[15])
+
 
 class CocoSchema(BaseModel):
     """COCO schema."""
@@ -65,6 +81,75 @@ class CocoSchema(BaseModel):
     categories: List["CocoCategorieSchema"] = Field([])
     images: List["CocoImageSchema"] = Field([])
     annotations: List["CocoAnnotationSchema"] = Field([])
+
+    def load_kitti(self, anns_dir: str, categories: List[str]) -> "CocoSchema":
+        """Load KITTI annotations."""
+        anns_dir = Path(anns_dir)
+
+        for ann_path in sorted(anns_dir.glob("*.txt")):
+            ann_path: Path = ann_path
+            lines = ann_path.read_text().splitlines()
+            for line in lines:
+                kitti = KittiSchema()
+                kitti.load(line.split())
+                if kitti.type not in categories:
+                    continue
+
+                # assign category
+                cat = CocoCategorieSchema(
+                    id=categories.index(kitti.type) + 1,  # 1-indexed
+                    name=kitti.type,
+                    supercategory=kitti.type,
+                )
+                if cat not in self.categories:
+                    self.categories.append(cat)
+
+                # assign image
+                img = CocoImageSchema(
+                    id=len(self.images) + 1,  # 1-indexed
+                    width=1242,  # default
+                    height=375,  # default
+                    file_name=ann_path.stem + ".png",
+                )
+                self.images.append(img)
+
+                # assign annotation
+                ann = CocoAnnotationSchema(
+                    id=len(self.annotations) + 1,  # 1-indexed
+                    image_id=img.id,
+                    category_id=cat.id,
+                    segmentation=[],
+                    area=self._xyxy2area(kitti.bbox),
+                    bbox=self._xyxy2xywh(kitti.bbox),
+                    iscrowd=0,
+                    attributes=kitti,
+                )
+                self.annotations.append(ann)
+
+        return self
+
+    def save_json(self, json_path: str) -> None:
+        """Save COCO annotations to JSON."""
+        data = {
+            "categories": [cat.model_dump() for cat in self.categories],
+            "images": [img.model_dump() for img in self.images],
+            "annotations": [ann.model_dump() for ann in self.annotations],
+        }
+
+        json.dump(data, open(json_path, "w"), indent=4)
+
+    def _xyxy2xywh(self, bbox: List[float]) -> List[float]:
+        """Convert xyxy to xywh."""
+        return [
+            bbox[0],
+            bbox[1],
+            bbox[2] - bbox[0],
+            bbox[3] - bbox[1],
+        ]
+
+    def _xyxy2area(self, bbox: List[float]) -> float:
+        """Calculate area from xyxy."""
+        return (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
 
 
 class CocoCategorieSchema(BaseModel):
