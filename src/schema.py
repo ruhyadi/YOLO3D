@@ -1,16 +1,26 @@
 """Schema module."""
 
 import rootutils
-from pydantic.main import TupleGenerator
 
 ROOT = rootutils.autosetup()
 
 import json
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Union
 
 from pydantic import BaseModel, Field
-from tqdm import tqdm
+
+
+class MultibinDataSchema(BaseModel):
+    """Multibin data schema."""
+
+    index: str = Field(..., example="042069")
+    category: str = Field(..., example="car")
+    box: List[float] = Field(..., example=[0.0, 0.0, 100, 100])
+    alpha: float = Field(..., example=-1.0)
+    orientation: List[List[float]] = Field(..., example=[[0.19, 0.98], [-0.19, -0.98]])
+    confidence: List[float] = Field(..., example=[0.5, 0.5])
+    dimensions: List[float] = Field(..., example=[1.2, 1.5, 1.2])
 
 
 class KittiSchema(BaseModel):
@@ -76,110 +86,50 @@ class KittiSchema(BaseModel):
             self.score = float(lines[15])
 
 
-class CocoSchema(BaseModel):
-    """COCO schema."""
+class KittiDimsAvg(BaseModel):
+    """kitti dimensions averager."""
 
-    categories: List["CocoCategorieSchema"] = Field([])
-    images: List["CocoImageSchema"] = Field([])
-    annotations: List["CocoAnnotationSchema"] = Field([])
+    car: List[float] = Field([], example=[1.52, 1.62, 3.88])
+    pedestrian: List[float] = Field([], example=[0.84, 0.50, 1.76])
+    cyclist: List[float] = Field([], example=[0.60, 1.76, 1.73])
 
-    def load_kitti(self, anns_dir: str, categories: List[str]) -> "CocoSchema":
-        """Load KITTI annotations."""
-        anns_dir = Path(anns_dir)
-        categories = [cat.lower() for cat in categories]
+    def __getitem__(self, category: str) -> List[float]:
+        """Get kitti dimension average of category."""
 
-        # assign category
-        for cat in categories:
-            cat = CocoCategorieSchema(
-                id=len(self.categories) + 1,  # 1-indexed
-                name=cat,
-                supercategory=cat,
-            )
-            self.categories.append(cat)
+        return self.__dict__[str(category).lower()]
 
-        for ann_path in tqdm(sorted(anns_dir.glob("*.txt")), desc="Loading KITTI"):
-            ann_path: Path = ann_path
+    def compute_dimensions(self, category: str, dims: List[float]) -> List[float]:
+        """Compute kitti dimension average of category."""
 
-            # assign image
-            img = CocoImageSchema(
-                id=len(self.images) + 1,  # 1-indexed
-                width=1242,  # default
-                height=375,  # default
-                file_name=ann_path.stem + ".png",
-            )
-            self.images.append(img)
+        return dims - self.__getitem__(category)
 
-            lines = ann_path.read_text().splitlines()
+    def load(self, labels_path: Union[str, Path], sets_path: Union[str, Path]) -> None:
+        """Load kitti dimension average from labels file."""
+        if isinstance(labels_path, str):
+            labels_path = Path(labels_path)
+        if isinstance(sets_path, str):
+            sets_path = Path(sets_path)
+
+        indexes = sets_path.read_text().splitlines()
+
+        for i in indexes:
+            label_path = labels_path / f"{i}.txt"
+            lines = label_path.read_text().splitlines()
             for line in lines:
-                kitti = KittiSchema()
-                kitti.load(line.split())
-                if kitti.type not in categories:
+                line = line.split()
+                category = str(line[0]).lower()
+                if category not in self.__dict__.keys():
                     continue
+                dimension = [float(line[8]), float(line[9]), float(line[10])]
+                self.__dict__[category].append(dimension)
 
-                # assign annotation
-                ann = CocoAnnotationSchema(
-                    id=len(self.annotations) + 1,  # 1-indexed
-                    image_id=img.id,
-                    category_id=categories.index(kitti.type) + 1,  # 1-indexed
-                    segmentation=[],
-                    area=self._xyxy2area(kitti.bbox),
-                    bbox=self._xyxy2xywh(kitti.bbox),
-                    iscrowd=0,
-                    attributes=kitti,
-                )
-                self.annotations.append(ann)
+        # average kitti dimension
+        for key, value in self.__dict__.items():
+            if not value:
+                continue
+            self.__dict__[key] = np.mean(value, axis=0).tolist()
 
-        return self
-
-    def save_json(self, json_path: str) -> None:
-        """Save COCO annotations to JSON."""
-        data = {
-            "categories": [cat.model_dump() for cat in self.categories],
-            "images": [img.model_dump() for img in self.images],
-            "annotations": [ann.model_dump() for ann in self.annotations],
-        }
-
-        json.dump(data, open(json_path, "w"), indent=4)
-
-    def _xyxy2xywh(self, bbox: List[float]) -> List[float]:
-        """Convert xyxy to xywh."""
-        return [
-            bbox[0],
-            bbox[1],
-            round(bbox[2] - bbox[0], 2),
-            round(bbox[3] - bbox[1], 2),
-        ]
-
-    def _xyxy2area(self, bbox: List[float]) -> float:
-        """Calculate area from xyxy."""
-        return round((bbox[2] - bbox[0]) * (bbox[3] - bbox[1]), 2)
-
-
-class CocoCategorieSchema(BaseModel):
-    """COCO categories schema."""
-
-    id: int = Field(..., example=1)
-    name: str = Field(..., example="car")
-    supercategory: str = Field(..., example="car")
-
-
-class CocoImageSchema(BaseModel):
-    """COCO image schema."""
-
-    id: int = Field(..., example=1)
-    width: int = Field(..., example=640)
-    height: int = Field(..., example=480)
-    file_name: str = Field(..., example="42069.jpg")
-
-
-class CocoAnnotationSchema(BaseModel):
-    """COCO annotation schema."""
-
-    id: int = Field(..., example=1)
-    image_id: int = Field(..., example=1)
-    category_id: int = Field(..., example=1)
-    segmentation: List[List[float]] = Field(..., example=[[1, 2, 3, 4]])
-    area: float = Field(..., example=100.0)
-    bbox: List[float] = Field(..., example=[1, 2, 3, 4])
-    iscrowd: int = Field(..., example=0)
-    attributes: Optional[KittiSchema] = Field(None)
+    def generate_json(self, path: str) -> None:
+        """Generate kitti dimension average json file."""
+        with open(path, "w") as f:
+            json.dump(self.__dict__, f, indent=4)
