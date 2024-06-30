@@ -13,6 +13,7 @@ pytest # for testing
 # deep learning
 # torch==2.0.1 # pytorch framework
 # torchvision==0.15.2 # pytorch computer vision library
+lightning==2.0.* # pytorch lightning framework
 torchmetrics==1.3.1 # pytorch metrics library
 
 # image processing
