@@ -199,8 +199,6 @@ def detect2d(
             s += '%gx%g ' % im.shape[2:]  # print string
 
             if len(det):
-                # Rescale boxes from img_size to im0 size
-                det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
 
                 # Print results
                 for c in det[:, -1].unique():
@@ -245,7 +243,7 @@ def plot3d(
     if img_2d is not None:
         plot_2d_box(img_2d, box_2d)
 
-    plot_3d_box(img, proj_matrix, orient, dimensions, location) # 3d boxes
+    plot_3d_box(img, proj_matrix, orient, dimensions, location) # 3d boxes and resizing of boxes 
 
     return location
 
