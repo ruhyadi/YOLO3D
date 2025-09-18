@@ -1,0 +1,31 @@
+FROM nvcr.io/nvidia/pytorch:25.03-py3
+
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+# remove existing user with the same UID if it exists
+RUN if id -u $USER_UID ; then userdel `id -un $USER_UID` ; fi
+
+# create a non-root user
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    && apt-get update \
+    && apt-get install -y sudo \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
+
+# install python dependencies
+COPY ./requirements.devel.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r /tmp/requirements.txt
+RUN rm /tmp/requirements.txt
+
+# set working directory
+WORKDIR /home/$USERNAME/workspace
+
+# default username
+USER $USERNAME
+
+# entrypoint
+CMD ["bash"]

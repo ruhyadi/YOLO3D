@@ -1,0 +1,31 @@
+{
+  "name": "yolo3d-devel",
+  "remoteUser": "vscode",
+  "build": {
+    "dockerfile": "../dockerfile.devel",
+    "args": {
+      "USERNAME": "vscode"
+    }
+  },
+  "workspaceFolder": "/home/vscode/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/workspace,type=bind,consistency=cached",
+  "containerEnv": {
+    "TZ": "Asia/Jakarta"
+  },
+  "runArgs": [
+    "--gpus=all",
+    "--shm-size=4g"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "eamodio.gitlens",
+        "redhat.vscode-yaml",
+        "ms-vscode.makefile-tools",
+        "yzhang.markdown-all-in-one",
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ]
+    }
+  }
+}
