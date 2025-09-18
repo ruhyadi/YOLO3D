@@ -17,7 +17,10 @@ hydra-optuna-sweeper==1.2.0
 # aim>=3.16.2  # no lower than 3.16.2, see https://github.com/aimhubio/aim/issues/2550
 
 # --------- others --------- #
-rootutils       # standardizing the project root setup
+fastapi>=0.100.0   # web framework for serving
+uvicorn>=0.20.0    # ASGI server
+python-multipart   # for file uploads
+aiohttp>=3.8.0     # for API client testing
 pre-commit      # hooks for applying linters on commit
 rich            # beautiful text formatting in terminal
 pytest          # tests

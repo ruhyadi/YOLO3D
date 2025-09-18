@@ -1,0 +1,37 @@
+# YOLO3D model configuration
+_target_: src.models.yolo3d_module.YOLO3DModule
+
+# Network configuration
+model:
+  _target_: src.models.yolo3d_module.MultiHeadCNN
+  input_channels: 3
+  num_classes: 8
+  backbone: "resnet"
+  pretrained: true
+
+# Optimizer configuration
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0001
+
+# Scheduler configuration
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: "min"
+  factor: 0.1
+  patience: 10
+  min_lr: 0.0001
+
+# Loss weights for multi-task learning
+loss_weights:
+  orientation: 1.0
+  location: 1.0
+  dimension: 1.0
+  confidence: 1.0
+  classification: 1.0
+
+# Compile model for potentially faster training
+compile: false

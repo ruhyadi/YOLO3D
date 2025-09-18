@@ -40,6 +40,12 @@ dependencies:
 
   - pip>=23
   - pip:
-      - hydra-optuna-sweeper
-      - hydra-colorlog
-      - rootutils
+      - hydra-core==1.3.2
+      - hydra-colorlog==1.2.0
+      - hydra-optuna-sweeper==1.2.0
+      - fastapi>=0.100.0
+      - uvicorn>=0.20.0
+      - python-multipart
+      - pre-commit
+      - rich
+      - pytest

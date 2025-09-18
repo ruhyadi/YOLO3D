@@ -1,12 +1,14 @@
 """This file prepares config fixtures for other tests."""
 
+from typing import Generator
 from pathlib import Path
 
 import pytest
-import rootutils
 from hydra import compose, initialize
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, open_dict
+
+PROJECT_ROOT = Path(__file__).parent.parent
 
 
 @pytest.fixture(scope="package")
@@ -20,7 +22,7 @@ def cfg_train_global() -> DictConfig:
 
         # set defaults for all tests
         with open_dict(cfg):
-            cfg.paths.root_dir = str(rootutils.find_root(indicator=".project-root"))
+            cfg.paths.root_dir = str(PROJECT_ROOT)
             cfg.trainer.max_epochs = 1
             cfg.trainer.limit_train_batches = 0.01
             cfg.trainer.limit_val_batches = 0.1
@@ -47,7 +49,7 @@ def cfg_eval_global() -> DictConfig:
 
         # set defaults for all tests
         with open_dict(cfg):
-            cfg.paths.root_dir = str(rootutils.find_root(indicator=".project-root"))
+            cfg.paths.root_dir = str(PROJECT_ROOT)
             cfg.trainer.max_epochs = 1
             cfg.trainer.limit_test_batches = 0.1
             cfg.trainer.accelerator = "cpu"
@@ -62,7 +64,7 @@ def cfg_eval_global() -> DictConfig:
 
 
 @pytest.fixture(scope="function")
-def cfg_train(cfg_train_global: DictConfig, tmp_path: Path) -> DictConfig:
+def cfg_train(cfg_train_global: DictConfig, tmp_path: Path) -> Generator[DictConfig, None, None]:
     """A pytest fixture built on top of the `cfg_train_global()` fixture, which accepts a temporary
     logging path `tmp_path` for generating a temporary logging path.
 
@@ -85,7 +87,7 @@ def cfg_train(cfg_train_global: DictConfig, tmp_path: Path) -> DictConfig:
 
 
 @pytest.fixture(scope="function")
-def cfg_eval(cfg_eval_global: DictConfig, tmp_path: Path) -> DictConfig:
+def cfg_eval(cfg_eval_global: DictConfig, tmp_path: Path) -> Generator[DictConfig, None, None]:
     """A pytest fixture built on top of the `cfg_eval_global()` fixture, which accepts a temporary
     logging path `tmp_path` for generating a temporary logging path.
 

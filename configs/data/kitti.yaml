@@ -1,0 +1,16 @@
+# KITTI dataset configuration
+_target_: src.data.kitti_datamodule.KITTIDataModule
+
+# Path to KITTI dataset directory
+data_dir: ${paths.data_dir}/KITTI
+
+# Training hyperparameters
+batch_size: 16
+num_workers: 4
+pin_memory: False
+
+# Dataset splitting ratios (train, val, test)
+train_val_test_split: [0.7, 0.2, 0.1]
+
+# Input image size
+target_size: [224, 224]
