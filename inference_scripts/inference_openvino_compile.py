@@ -29,6 +29,11 @@ from torchvision.models import resnet18, vgg11
 import openvino.torch
 import numpy as np
 
+# Works around a torch._dynamo guard-building crash (AssertionError: sources
+# must not be empty) seen on this YOLOv5 model with the installed torch build;
+# falls back to eager execution instead of hard-crashing.
+torch._dynamo.config.suppress_errors = True
+
 from script.Dataset import generate_bins, DetectedObject
 from library.Math import *
 from library.Plotting import *
@@ -111,7 +116,7 @@ def detect3d(
             input_tensor[0,:,:,:] = input_img
 
             # predict orient, conf, and dim
-            regressor = torch.compile(regressor, backend="openvino", options={"device": "CPU"})
+            regressor = torch.compile(regressor, backend="openvino", dynamic=False, options={"device": "CPU"})
 
             [orient, conf, dim] = regressor(input_tensor)
             orient = orient.cpu().data.numpy()[0, :, :]
@@ -172,7 +177,7 @@ def detect2d(
     # Dataloader
     dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
 
-    model = torch.compile(model, backend="openvino", options={"device": "CPU"})
+    model = torch.compile(model, backend="openvino", dynamic=False, options={"device": "CPU"})
     # Run inference
     model.warmup(imgsz=(1, 3, *imgsz), half=False)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0

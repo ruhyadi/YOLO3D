@@ -9,6 +9,11 @@ import sys
 import cv2 # Explicitly import cv2
 import random # For selecting images
 
+# Works around a torch._dynamo guard-building crash (AssertionError: sources
+# must not be empty) seen on this YOLOv5 model with the installed torch build;
+# falls back to eager execution instead of hard-crashing.
+torch._dynamo.config.suppress_errors = True
+
 # Add project root to sys.path to allow imports
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # Project root directory

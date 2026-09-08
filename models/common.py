@@ -330,8 +330,8 @@ class DetectMultiBackend(nn.Module):
         elif xml:  # OpenVINO
             LOGGER.info(f'Loading {w} for OpenVINO inference...')
             check_requirements(('openvino',))  # requires openvino: https://pypi.org/project/openvino/
-            from openvino.runtime import Core
-            core = Core()
+            import openvino as ov
+            core = ov.Core()
             network = core.read_model(model=w, weights=Path(w).with_suffix('.bin'))  # *.xml, *.bin paths
             executable_network = core.compile_model(network, device_name='CPU')
             LOGGER.info("Model compiled successfully with OpenVINO.")

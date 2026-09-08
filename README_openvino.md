@@ -31,7 +31,29 @@
      python convert_models.py
      ```
 
-5. **Run inference scripts**
+5. **Quantize models to INT8 (optional)**
+
+   This step uses NNCF (Neural Network Compression Framework) to post-training quantize the OpenVINO IR models produced in step 4 down to INT8, which can significantly speed up inference (especially on CPU/NPU) at a small accuracy cost. NNCF is installed as part of `openvino` tooling; if it's missing, install it with `pip install nncf`.
+
+   - **Quantize YOLOv5s** (`inference_scripts/quantize_yolo.py`), using real calibration images from `eval/image_2/`:
+     ```bash
+     cd inference_scripts
+     python quantize_yolo.py \
+       --ir ../weights/openvino/yolov5s.xml \
+       --images ../eval/image_2/ \
+       --output ../weights/openvino/yolov5s_int8.xml
+     ```
+     This writes `yolov5s_int8.xml` / `yolov5s_int8.bin` to `weights/openvino/`.
+
+   - **Quantize ResNet18 regressor** (`inference_scripts/quantize_resnet.py`), which reads `weights/openvino/resnet18.xml` and writes `weights/openvino/resnet18_quantized.xml` (paths are currently hardcoded in the script, run from the repo root):
+     ```bash
+     cd YOLO3D  # repo root, where weights/openvino/resnet18.xml lives
+     python inference_scripts/quantize_resnet.py
+     ```
+
+   For details on benchmarking these quantized models, see the [Benchmarking Guide](README_benchmarking.md#benchmarking-int8-quantized-models).
+
+6. **Run inference scripts**
 
    - **Original inference script**
      (This script might need updates if it doesn't use the new model paths, or it might be deprecated if focus is on OpenVINO scripts.)
@@ -54,6 +76,13 @@
        ```bash
        # Assumes yolov5s.xml and resnet18.xml were created in step 4.
        python inference_openvino_xml.py  --save_result
+       ```
+       To verify the actual INT8 quantized models produce correct 3D detections (not just faster timings), point `--weights`/`--reg_weights` at the quantized files from step 5:
+       ```bash
+       python inference_openvino_xml.py \
+         --weights ../weights/openvino/yolov5s_int8.xml \
+         --reg_weights ../weights/openvino/resnet18_quantized.xml \
+         --save_result --output_path ../output_int8
        ```
 
      - To leverage `torch.compile` for an easier path to OpenVINO acceleration:

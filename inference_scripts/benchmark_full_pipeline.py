@@ -124,7 +124,6 @@ def main():
     print(f"Loaded {len(all_images_hwc_bgr_np)} images for benchmarking.")
 
     # --- Warm-up Phase ---
-    print(f"\n--- Starting {args.warmup_runs} warm-up runs ---")
     for i in range(args.warmup_runs):
         image_np_hwc = all_images_hwc_bgr_np[i % len(all_images_hwc_bgr_np)]
         _, _ = benchmarkable_detect3d(
@@ -139,12 +138,8 @@ def main():
             yolo_classes_to_detect=args.yolo_classes_to_detect, max_detections_yolo=args.max_detections_yolo,
             regressor_batch_size=args.regressor_batch_size
         )
-        if (i + 1) % 10 == 0 or (i + 1) == args.warmup_runs:
-             print(f"Warm-up run {i+1}/{args.warmup_runs} completed.")
-    print("Warm-up complete.")
 
     # --- Benchmark Phase ---
-    print(f"\n--- Starting {args.benchmark_runs} benchmark runs ---")
     overall_timings_list = []
     for i in range(args.benchmark_runs):
         image_np_hwc = all_images_hwc_bgr_np[i % len(all_images_hwc_bgr_np)]
@@ -161,9 +156,6 @@ def main():
             regressor_batch_size=args.regressor_batch_size
         )
         overall_timings_list.append(frame_timings)
-        if (i + 1) % 10 == 0 or (i + 1) == args.benchmark_runs:
-            print(f"Benchmark run {i+1}/{args.benchmark_runs} completed.")
-    print("Benchmarking complete.")
 
     # --- Results Aggregation and Output ---
     if not overall_timings_list:
@@ -191,9 +183,10 @@ def main():
     if args.yolo_cfg: print(f"YOLO Config: {args.yolo_cfg}")
     print(f"Regressor Model: {args.regressor_weights} (Type: {args.regressor_name})")
     print(f"Dataset: {args.dataset_path} ({len(all_images_hwc_bgr_np)} images used for cycling)")
-    print(f"Target OpenVINO Device (for OpenVINO parts): {openvino_target_device_str}")
     if args.pipeline_type == 'pytorch_native':
         print(f"PyTorch Native Device: {pytorch_device.type}")
+    elif args.pipeline_type in ['onnx_openvino', 'ir_openvino', 'pytorch_compile_openvino']:
+        print(f"Target OpenVINO Device: {openvino_target_device_str}")
     print(f"YOLO Input Size: {args.img_size_yolo}x{args.img_size_yolo}")
     print(f"Regressor Input Patch Size: {args.img_size_regressor}x{args.img_size_regressor}")
     print(f"Regressor Batch Size (for detected objects): {args.regressor_batch_size}")

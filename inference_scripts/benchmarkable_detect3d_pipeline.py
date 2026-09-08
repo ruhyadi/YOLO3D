@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
 
 # OpenVINO
 try:
-    import openvino.runtime as ov
+    import openvino as ov
 except ImportError:
     print("Warning: OpenVINO runtime not found. OpenVINO model types will not be available.")
     ov = None # Define ov as None if import fails
@@ -53,6 +53,12 @@ def load_yolo_detector(weights_path, cfg_path, device_str, model_type='pytorch_n
             device = torch.device(device_str)
             checkpoint = torch.load(weights_path, map_location=device, weights_only=False)
             final_model = None
+            # Extract names from checkpoint before rebuilding model from cfg
+            names_from_checkpoint = None
+            if hasattr(checkpoint, 'names'):
+                names_from_checkpoint = checkpoint.names
+            elif isinstance(checkpoint, dict) and 'model' in checkpoint and hasattr(checkpoint['model'], 'names'):
+                names_from_checkpoint = checkpoint['model'].names
             if hasattr(checkpoint, 'yaml') and hasattr(checkpoint, 'model') and hasattr(checkpoint, 'eval'):
                 final_model = checkpoint.to(device).eval()
                 if cfg_path:
@@ -82,6 +88,9 @@ def load_yolo_detector(weights_path, cfg_path, device_str, model_type='pytorch_n
                 model_from_cfg.load_state_dict(checkpoint)
                 final_model = model_from_cfg.eval()
             if final_model is None: raise ValueError("Could not load PyTorch native model.")
+            # Restore class names from the original checkpoint (lost when rebuilding from cfg)
+            if names_from_checkpoint is not None:
+                final_model.names = names_from_checkpoint
             print(f"PyTorch native YOLO model loaded successfully on {device_str}.")
             return final_model
 
@@ -89,6 +98,12 @@ def load_yolo_detector(weights_path, cfg_path, device_str, model_type='pytorch_n
             device_cpu = torch.device('cpu')
             checkpoint = torch.load(weights_path, map_location=device_cpu, weights_only=False)
             model_on_cpu = None
+            # Extract names from checkpoint before rebuilding model from cfg
+            names_from_checkpoint = None
+            if hasattr(checkpoint, 'names'):
+                names_from_checkpoint = checkpoint.names
+            elif isinstance(checkpoint, dict) and 'model' in checkpoint and hasattr(checkpoint['model'], 'names'):
+                names_from_checkpoint = checkpoint['model'].names
             if hasattr(checkpoint, 'yaml') and hasattr(checkpoint, 'model') and hasattr(checkpoint, 'eval'):
                 model_on_cpu = checkpoint.cpu().eval()
                 if cfg_path:
@@ -119,6 +134,9 @@ def load_yolo_detector(weights_path, cfg_path, device_str, model_type='pytorch_n
                 model_on_cpu = model_from_cfg.eval()
 
             if model_on_cpu is None: raise ValueError("Could not load PyTorch model on CPU for compile.")
+            # Restore class names from the original checkpoint (lost when rebuilding from cfg)
+            if names_from_checkpoint is not None:
+                model_on_cpu.names = names_from_checkpoint
             print(f"PyTorch YOLO model loaded on CPU, compiling with OpenVINO backend for {device_str.upper()}...")
             compiled_model = torch.compile(model_on_cpu, backend="openvino", options={"device": device_str.upper()})
             print("PyTorch YOLO model compiled with OpenVINO backend successfully.")
@@ -130,9 +148,10 @@ def load_yolo_detector(weights_path, cfg_path, device_str, model_type='pytorch_n
             ov_model = core.read_model(weights_path)
             try:
                 input_name = ov_model.input(0).any_name
-                new_shape = ov.PartialShape([batch_size, 3, img_size[0], img_size[1]])
+                # Use fixed batch size
+                new_shape = ov.PartialShape([1, 3, img_size[0], img_size[1]])
                 ov_model.reshape({input_name: new_shape})
-                print(f"Reshaped OpenVINO model input to {new_shape}")
+                print(f"Reshaped OpenVINO YOLO model input to {new_shape} (fixed batch size: 1)")
             except Exception as e:
                 print(f"Warning: Could not reshape OpenVINO model. Using default shape. Error: {e}", file=sys.stderr)
             print(f"Compiling OpenVINO model for device: {device_str.upper()}")
@@ -194,20 +213,37 @@ def load_regressor_model(weights_path, model_name_str, device_str, model_type='p
             ov_model = core.read_model(weights_path)
             try:
                 input_name = ov_model.input(0).any_name
+                # Use fixed batch size
                 new_shape = ov.PartialShape([batch_size, 3, img_size[0], img_size[1]])
                 ov_model.reshape({input_name: new_shape})
-                print(f"Reshaped OpenVINO Regressor model input to {new_shape}")
+                print(f"Reshaped OpenVINO Regressor model input to {new_shape} (fixed batch size: {batch_size})")
             except Exception as e:
                 print(f"Warning: Could not reshape OpenVINO Regressor model. Using default shape. Error: {e}", file=sys.stderr)
             print(f"Compiling OpenVINO Regressor model for device: {device_str.upper()}")
-            compiled_model = core.compile_model(ov_model, device_name=device_str.upper())
+            
+            # Apply performance optimization config BEFORE compilation
+            config = {
+                'PERFORMANCE_HINT': 'LATENCY',  # Optimize for low latency (not throughput)
+            }
+            compiled_model = core.compile_model(ov_model, device_name=device_str.upper(), config=config)
             print("OpenVINO Regressor model compiled successfully.")
+            print(f"Applied performance optimization config: {config}")
+            
             return compiled_model
         else:
             raise ValueError(f"Unsupported regressor_model_type: {model_type}")
     except Exception as e:
         print(f"Error loading/compiling Regressor model ({model_type}): {e}", file=sys.stderr)
         return None
+
+# COCO to KITTI class name mapping (for OpenVINO models that can't extract names)
+COCO_TO_KITTI_MAPPING = {
+    0: 'pedestrian',     # person
+    2: 'car',
+    3: 'cyclist',        # bicycle
+    5: 'truck',          # bus -> truck (approximate)
+    7: 'truck',
+}
 
 def benchmarkable_detect3d(
     yolo_model,
@@ -227,16 +263,24 @@ def benchmarkable_detect3d(
     iou_thres_yolo=0.45,
     yolo_classes_to_detect=None,
     max_detections_yolo=1000,
-    regressor_batch_size=64
+    regressor_batch_size=64,
+    override_class_names=None
 ):
     timings = {}
     img_original_shape_hw = input_image_np.shape[:2]
 
-    names = None
-    if yolo_model_type in ['pytorch_native', 'pytorch_compile_openvino']:
-        yolo_model_for_names = yolo_model._model if hasattr(yolo_model, '_model') and hasattr(yolo_model._model, 'names') else yolo_model
-        if hasattr(yolo_model_for_names, 'names'): names = yolo_model_for_names.names
-    if names is None: names = [f'class_{i}' for i in range(80)]
+    # Use override_class_names if provided, otherwise extract from model
+    if override_class_names is not None:
+        names = override_class_names
+    else:
+        names = None
+        if yolo_model_type in ['pytorch_native', 'pytorch_compile_openvino']:
+            yolo_model_for_names = yolo_model._model if hasattr(yolo_model, '_model') and hasattr(yolo_model._model, 'names') else yolo_model
+            if hasattr(yolo_model_for_names, 'names'): names = yolo_model_for_names.names
+        if names is None: 
+            # For OpenVINO models, create COCO names with KITTI mapping fallback
+            coco_names = [f'class_{i}' for i in range(80)]
+            names = coco_names
 
     time_start_yolo_preproc = time.perf_counter()
     img_yolo_letterboxed = letterbox(input_image_np, new_shape=img_size_yolo, stride=stride_yolo, auto=False)[0]
@@ -281,30 +325,67 @@ def benchmarkable_detect3d(
 
     if num_2d_detections > 0:
         regressor_input_batch_constructor = []
+        skipped_due_to_class = 0
+        skipped_due_to_exception = 0
+        
         for det_info in processed_detections_for_regressor:
             _t_start = time.perf_counter()
-            detected_class_name = names[det_info["cls_idx"]] if names and 0 <= det_info["cls_idx"] < len(names) else f'class_{det_info["cls_idx"]}'
+            cls_idx = det_info["cls_idx"]
+            
+            # Get class name: try direct names lookup, fallback to COCO-to-KITTI mapping for OpenVINO
+            if names and 0 <= cls_idx < len(names):
+                detected_class_name = names[cls_idx]
+            else:
+                detected_class_name = f'class_{cls_idx}'
+            
+            # For OpenVINO models using generic class names, try COCO-to-KITTI mapping
+            if detected_class_name.startswith('class_') and yolo_model_type in ['onnx_openvino', 'ir_openvino']:
+                if cls_idx in COCO_TO_KITTI_MAPPING:
+                    detected_class_name = COCO_TO_KITTI_MAPPING[cls_idx]
+            
             if class_averages and not class_averages.recognized_class(detected_class_name):
-                timings['regressor_crop_preprocess_total'] += time.perf_counter() - _t_start; continue
-            box_2d = [int(c) for c in det_info["xyxy_scaled"]]
+                timings['regressor_crop_preprocess_total'] += time.perf_counter() - _t_start
+                skipped_due_to_class += 1
+                continue
+            # Convert flat coordinates [x1, y1, x2, y2] to nested format [[x1, y1], [x2, y2]]
+            xyxy = [int(c) for c in det_info["xyxy_scaled"]]
+            box_2d = [(xyxy[0], xyxy[1]), (xyxy[2], xyxy[3])]
             try:
-                detected_obj = DetectedObject(input_image_np, detected_class_name, box_2d, calib_file_path, (img_size_regressor[1], img_size_regressor[0]))
+                detected_obj = DetectedObject(input_image_np, detected_class_name, box_2d, calib_file_path)
                 regressor_patch_tensor = detected_obj.img
-                if regressor_model_type in ['pytorch_native', 'pytorch_compile_openvino']: regressor_input_batch_constructor.append(regressor_patch_tensor)
-                elif regressor_model_type in ['onnx_openvino', 'ir_openvino']: regressor_input_batch_constructor.append(regressor_patch_tensor.cpu().numpy())
-            except Exception as e: timings['regressor_crop_preprocess_total'] += time.perf_counter() - _t_start; continue
-            timings['regressor_crop_preprocess_total'] += time.perf_counter() - _t_start
+                if regressor_model_type in ['pytorch_native', 'pytorch_compile_openvino']: 
+                    regressor_input_batch_constructor.append(regressor_patch_tensor)
+                elif regressor_model_type in ['onnx_openvino', 'ir_openvino']: 
+                    regressor_input_batch_constructor.append(regressor_patch_tensor.cpu().numpy())
+                timings['regressor_crop_preprocess_total'] += time.perf_counter() - _t_start
+            except Exception as e:
+                print(f"Warning: Failed to create DetectedObject for class '{detected_class_name}' with box {box_2d}: {e}", file=sys.stderr)
+                timings['regressor_crop_preprocess_total'] += time.perf_counter() - _t_start
+                skipped_due_to_exception += 1
+                continue
 
         timings['num_regressor_runs'] = len(regressor_input_batch_constructor)
+        
         if regressor_input_batch_constructor:
             for i in range(0, len(regressor_input_batch_constructor), regressor_batch_size):
                 current_batch_list = regressor_input_batch_constructor[i : i + regressor_batch_size]
                 if not current_batch_list: continue
+                
+                actual_batch_size = len(current_batch_list)
                 reg_batch_feed = None
+                
                 if regressor_model_type in ['pytorch_native', 'pytorch_compile_openvino']:
                     reg_batch_feed = torch.stack(current_batch_list)
                     if regressor_model_type == 'pytorch_native': reg_batch_feed = reg_batch_feed.to(device_pytorch)
-                elif regressor_model_type in ['onnx_openvino', 'ir_openvino']: reg_batch_feed = np.stack(current_batch_list)
+                    
+                elif regressor_model_type in ['onnx_openvino', 'ir_openvino']: 
+                    reg_batch_feed = np.stack(current_batch_list)  # Shape: (actual_batch_size, 3, 224, 224)
+                    
+                    # Pad incomplete batches to match model's expected batch size
+                    if actual_batch_size < regressor_batch_size:
+                        padding_needed = regressor_batch_size - actual_batch_size
+                        padding = np.zeros((padding_needed, *reg_batch_feed.shape[1:]), dtype=reg_batch_feed.dtype)
+                        reg_batch_feed = np.vstack([reg_batch_feed, padding])
 
                 _t_infer_start = time.perf_counter()
                 if regressor_model_type == 'pytorch_native':
@@ -314,7 +395,10 @@ def benchmarkable_detect3d(
                 elif regressor_model_type in ['onnx_openvino', 'ir_openvino']:
                     reg_input_name = regressor_model.input(0).any_name
                     _ = regressor_model.infer_new_request({reg_input_name: reg_batch_feed})
-                timings['regressor_inference_batch_total'] += time.perf_counter() - _t_infer_start
+                    # Note: we only used actual_batch_size samples, the padding is discarded
+                    
+                batch_inference_time = time.perf_counter() - _t_infer_start
+                timings['regressor_inference_batch_total'] += batch_inference_time
 
     annotated_image = input_image_np.copy()
     return annotated_image, timings

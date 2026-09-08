@@ -63,7 +63,9 @@ def detect3d(
     calib_file,
     show_result,
     save_result,
-    output_path
+    output_path,
+    yolo_weights='../weights/onnx/yolov5s.onnx',
+    yolo_data='../data/coco128.yaml'
     ):
 
     # Directory
@@ -85,16 +87,22 @@ def detect3d(
     averages = ClassAverages.ClassAverages()
     angle_bins = generate_bins(2)
 
+    # timing for regressor
+    regressor_times_per_image = []
+
     # loop images
     for i, img_path in enumerate(imgs_path):
         # read image
         img = cv2.imread(img_path)
         
+        # Track regressor times for this image
+        image_regressor_times = []
+        
         # Run detection 2d
         dets = detect2d(
-            weights='../weights/yolov5s.onnx',
+            weights=yolo_weights,
             source=img_path,
-            data='../data/coco128.yaml',
+            data=yolo_data,
             imgsz=[640, 640],
             device='cpu',
             classes=[0, 2, 3, 5]
@@ -117,10 +125,12 @@ def detect3d(
             input_tensor = torch.zeros([1,3,224,224]).to('cpu')
             input_tensor[0,:,:,:] = input_img
 
-            # predict orient, conf, and dim
-            # [orient, conf, dim] = regressor(input_tensor)
-
+            # predict orient, conf, and dim with timing
+            t_reg_start = time_sync()
             results = compiled_regressor(input_tensor.numpy())
+            t_reg_end = time_sync()
+            image_regressor_times.append((t_reg_end - t_reg_start) * 1000)  # convert to ms
+            
             orient = results[compiled_regressor.output(0)]
             conf = results[compiled_regressor.output(1)]
             dim = results[compiled_regressor.output(2)]
@@ -144,6 +154,12 @@ def detect3d(
             # plot 3d detection
             plot3d(img, proj_matrix, box_2d, dim, alpha, theta_ray)
 
+        # Log per-image regressor timing
+        if image_regressor_times:
+            avg_time = np.mean(image_regressor_times)
+            LOGGER.info(f'Image {i:03d} - ResNet average inference time: {avg_time:.2f}ms ({len(image_regressor_times)} detections)')
+            regressor_times_per_image.append(avg_time)
+
         if show_result:
             cv2.imshow('3d detection', img)
             cv2.waitKey(0)
@@ -159,6 +175,11 @@ def detect3d(
             im_name = f'{output_path}/{i:03d}.png'
             cv2.imwrite(im_name, img)
             LOGGER.info(f'Output Saved {im_name}')
+
+    # Log overall ResNet regressor timing statistics
+    if regressor_times_per_image:
+        overall_avg = np.mean(regressor_times_per_image)
+        LOGGER.info(f'ResNet Regressor - Overall average inference time per image: {overall_avg:.2f}ms')
 
 @torch.no_grad()
 def detect2d(
@@ -310,7 +331,9 @@ def main(opt):
         calib_file=opt.calib_file,
         show_result=opt.show_result,
         save_result=opt.save_result,
-        output_path=opt.output_path
+        output_path=opt.output_path,
+        yolo_weights=opt.weights[0] if isinstance(opt.weights, list) else opt.weights,
+        yolo_data=opt.data
     )
 
 if __name__ == "__main__":

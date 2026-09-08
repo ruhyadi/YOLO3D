@@ -35,7 +35,6 @@ from library.Plotting import *
 from script import Model, ClassAverages
 from script.Model import ResNet, ResNet18, VGG11
 import openvino as ov
-from openvino.runtime import Core 
 
 core = ov.Core()
 
@@ -64,7 +63,9 @@ def detect3d(
     calib_file,
     show_result,
     save_result,
-    output_path
+    output_path,
+    yolo_weights='../weights/openvino/yolov5s.xml',
+    yolo_data='../data/coco128.yaml'
     ):
 
     # Directory
@@ -92,9 +93,9 @@ def detect3d(
         
         # Run detection 2d
         dets = detect2d(
-            weights='../weights/openvino/yolov5s.xml',
+            weights=yolo_weights,
             source=img_path,
-            data='../data/coco128.yaml',
+            data=yolo_data,
             imgsz=[640, 640],
             device='cpu',
             classes=[0, 2, 3, 5]
@@ -307,7 +308,9 @@ def main(opt):
         calib_file=opt.calib_file,
         show_result=opt.show_result,
         save_result=opt.save_result,
-        output_path=opt.output_path
+        output_path=opt.output_path,
+        yolo_weights=opt.weights[0] if isinstance(opt.weights, list) else opt.weights,
+        yolo_data=opt.data
     )
 
 if __name__ == "__main__":

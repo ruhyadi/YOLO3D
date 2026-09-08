@@ -111,10 +111,16 @@ def detect3d(
             input_tensor[0,:,:,:] = input_img
 
             # predict orient, conf, and dim
+            t_resnet_start = time_sync()
             [orient, conf, dim] = regressor(input_tensor)
+            t_resnet_end = time_sync()
+            resnet_time = (t_resnet_end - t_resnet_start) * 1000  # convert to ms
+            
             orient = orient.cpu().data.numpy()[0, :, :]
             conf = conf.cpu().data.numpy()[0, :]
             dim = dim.cpu().data.numpy()[0, :]
+            
+            LOGGER.info(f'ResNet inference: {resnet_time:.1f}ms')
 
             dim += averages.get_item(detected_class)
 

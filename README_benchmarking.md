@@ -72,6 +72,25 @@ python inference_scripts/benchmark_full_pipeline.py \
 ```
 (Adapt paths and `--pipeline_type` for other configurations like `pytorch_compile_openvino`.)
 
+### Benchmarking INT8 Quantized Models
+
+Once the OpenVINO IR models have been quantized to INT8 (see [Quantize models to INT8](README_openvino.md#5-quantize-models-to-int8-optional) in `README_openvino.md`, producing `weights/openvino/yolov5s_int8.xml` and `weights/openvino/resnet18_quantized.xml`), benchmark them the same way as the regular OpenVINO IR pipeline above, just pointing `--yolo_weights`/`--regressor_weights` at the quantized files. The `--pipeline_type` stays `ir_openvino`.
+
+**Example Command (INT8 OpenVINO IR Pipeline, CPU):**
+```bash
+python inference_scripts/benchmark_full_pipeline.py \
+  --pipeline_type ir_openvino \
+  --yolo_weights weights/openvino/yolov5s_int8.xml \
+  --regressor_weights weights/openvino/resnet18_quantized.xml \
+  --regressor_name resnet18 \
+  --dataset_path eval/image_2/ \
+  --calib_file eval/camera_cal/calib_cam_to_cam.txt \
+  --device CPU \
+  --warmup_runs 3 \
+  --benchmark_runs 10
+```
+Swap `--device CPU` for `GPU` or `NPU` to benchmark on other targets, exactly like the FP32 IR pipeline. Results are comparable directly against the FP32 IR run since both use the same `ir_openvino` pipeline type and inputs — only the model weights differ.
+
 ## Individual Model Benchmark Scripts
 
 ### 1. Native PyTorch (`benchmark_pytorch_native.py`)
@@ -140,6 +159,8 @@ python inference_scripts/benchmark_full_pipeline.py \
        --benchmark_runs 50 \
        --dataset_path eval/image_2/ # Optional: Path to dataset for real data benchmarking
      ```
+
+
 
 ## Notes:
 - **Device:** Performance will vary significantly based on the `--device` used (CPU, GPU, NPU) and the hardware capabilities.
